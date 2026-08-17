@@ -4,7 +4,8 @@
 
 ## Funktionen
 
-- **Video-Aufnahme direkt im Browser** (PWA, Handy-Kamera) oder Video-Upload. Während des Rundgangs kannst du antippen, in welchem Raum du gerade bist (Raum-Tagging).
+- **Verbindliche Aufnahme-Anleitung** — ein fester Standard für jeden Rundgang (Objektiv 1×, 1080p/30 fps, Querformat, Brusthöhe, ein Schritt pro Sekunde, 20 Sekunden je Umdrehung, 2–4 Minuten Gesamtlänge). Damit werden zwei Aufnahmen vergleichbar und die Maßschätzung verlässlich.
+- **Video-Aufnahme direkt im Browser** (PWA, Handy-Kamera) oder Video-Upload. Während des Rundgangs kannst du antippen, in welchem Raum du gerade bist (Raum-Tagging); die App führt dich dann pro Raum durch den immer gleichen Dreischritt und warnt, wenn das Video zu lang wird.
 - **Datensparsam:** Das Video verlässt das Gerät nicht — im Browser werden ~28 Standbilder extrahiert und nur diese hochgeladen.
 - **KI-Analyse (Claude):** erkennt Räume, schätzt Maße über Referenzobjekte (Türhöhe ≈ 200 cm), verortet Türen/Fenster/Durchgänge und baut per Auto-Layout einen Grundriss. Alle Werte sind als Schätzungen markiert.
 - **Grundriss-Editor (SVG):** Räume verschieben, Ecken ziehen, Maße numerisch korrigieren, Türen/Fenster anlegen und verschieben, Undo, Zoom/Pan, Versionierung.

@@ -52,3 +52,30 @@ test("kompletter Demo-Durchlauf", async ({ page }) => {
   await page.goto(`${projectUrl}/view3d`);
   await expect(page.locator("canvas")).toBeVisible({ timeout: 30_000 });
 });
+
+test("Aufnahme-Anleitung ist vor der Aufnahme erreichbar", async ({ page }) => {
+  await page.goto("/");
+  await page.getByTestId("new-project-name").fill(`E2E Anleitung ${Date.now()}`);
+  await page.getByTestId("new-project-submit").click();
+  await page.waitForURL(/\/projects\/[a-z0-9]+$/);
+  const projectUrl = page.url();
+
+  // Beim ersten Besuch wird die Anleitung aktiv angeboten
+  await page.goto(`${projectUrl}/capture`);
+  await expect(page.getByTestId("guide-callout")).toBeVisible();
+  await page.getByTestId("open-guide").click();
+  await page.waitForURL(/\/capture\/guide$/);
+
+  // Die harten Vorgaben stehen drin
+  await expect(page.getByRole("heading", { name: /So filmst du deine Wohnung/ })).toBeVisible();
+  await expect(page.getByText("Objektiv: 1× (Hauptkamera)")).toBeVisible();
+  await expect(page.getByText(/1080p bei 30 fps/)).toBeVisible();
+  await expect(page.getByText(/Eine volle Drehung dauert 20 Sekunden/)).toBeVisible();
+
+  // Zurück zur Aufnahme: Hinweis ist quittiert, Kurzfassung bleibt erreichbar
+  await page.getByRole("link", { name: /Alles klar/ }).click();
+  await page.waitForURL(/\/capture$/);
+  await expect(page.getByTestId("guide-callout")).toHaveCount(0);
+  await page.getByRole("button", { name: "Checkliste" }).click();
+  await expect(page.getByText(/Objektiv auf 1×/)).toBeVisible();
+});
