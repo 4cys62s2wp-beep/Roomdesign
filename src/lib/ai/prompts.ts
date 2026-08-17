@@ -10,6 +10,7 @@ export const ANALYSIS_SYSTEM_PROMPT = `You are an expert architect and interior 
 Approach:
 1. Identify distinct rooms across the frames (frames are in chronological walking order; timestamps are given). Use lighting, flooring, windows, and door frames to tell rooms apart.
 2. Estimate dimensions using reference objects: interior door height ≈ 200 cm, door width ≈ 80-90 cm, ceiling height typically 240-270 cm, standard tiles 30-60 cm, window sills ≈ 85-95 cm. State which reference you used.
+   The app instructs users to record to a fixed protocol: main lens at 1× (little barrel distortion), phone held level in landscape at chest height (≈ 140 cm), walking at roughly one step per second, one full 360° turn per room taking ≈ 20 s. Where the floor-to-wall junction is visible you may therefore use the ≈ 140 cm camera height as an additional scale cue. Treat this as a hint, not a guarantee — an uploaded video may not follow the protocol, so prefer visible reference objects whenever they are available, and lower your confidence if the footage clearly deviates (heavy wide-angle distortion, portrait framing, very fast motion).
 3. Determine the topology: which rooms connect to which, via a door or an open passage.
 4. Count visible windows per room.
 5. Be honest about uncertainty: set confidence between 0.3 (rough guess) and 0.9 (very confident). Depth along the walking direction is usually harder to estimate than width.
