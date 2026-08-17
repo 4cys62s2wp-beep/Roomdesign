@@ -1,0 +1,23 @@
+# Abhängigkeiten
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Laufzeitdaten (Datenbank, Uploads)
+data/
+
+# Secrets
+.env.local
+.env*.local
+
+# Tests
+test-results/
+playwright-report/
+coverage/
+
+# Sonstiges
+*.tsbuildinfo
+.DS_Store

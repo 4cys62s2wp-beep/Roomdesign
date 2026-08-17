@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String       @id @default(cuid())
+  name        String
+  address     String?
+  globalStyle String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  videos      VideoAsset[]
+  floorPlan   FloorPlan?
+  jobs        Job[]
+}
+
+model VideoAsset {
+  id          String       @id @default(cuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind        String // "recorded" | "uploaded"
+  filePath    String?
+  durationSec Float?
+  roomTags    String? // JSON: [{ timestampMs, label }]
+  createdAt   DateTime     @default(now())
+  frames      FrameAsset[]
+}
+
+model FrameAsset {
+  id          String     @id @default(cuid())
+  videoId     String
+  video       VideoAsset @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  index       Int
+  timestampMs Int
+  filePath    String
+  width       Int
+  height      Int
+}
+
+model Job {
+  id         String    @id @default(cuid())
+  projectId  String
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type       String // "analysis" | "design"
+  status     String    @default("queued") // queued | running | succeeded | failed
+  step       String?
+  progress   Int       @default(0)
+  statusText String?
+  error      String?
+  payload    String // JSON
+  result     String? // JSON
+  createdAt  DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+}
+
+model FloorPlan {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  data      String // JSON FloorPlanDoc
+  source    String   @default("manual") // ai | manual | demo
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+  rooms     Room[]
+}
+
+model Room {
+  id          String           @id @default(cuid())
+  floorPlanId String
+  floorPlan   FloorPlan        @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+  key         String // Raum-ID innerhalb des FloorPlanDoc
+  name        String
+  type        String
+  areaM2      Float            @default(0)
+  proposals   DesignProposal[]
+
+  @@unique([floorPlanId, key])
+}
+
+model DesignProposal {
+  id           String   @id @default(cuid())
+  roomId       String
+  room         Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  title        String
+  stylePrompt  String?
+  data         String // JSON ProposalDoc
+  totalCostEur Float    @default(0)
+  isFavorite   Boolean  @default(false)
+  feedback     String? // JSON: Verlauf der Refine-Anweisungen
+  createdAt    DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
+}

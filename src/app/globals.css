@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #f7f4ec;
+  --color-sand: #efe9db;
+  --color-ink: #26231d;
+  --color-ink-soft: #57524a;
+  --color-terra: #b5674c;
+  --color-terra-deep: #97523c;
+  --color-sage: #8a9a7e;
+  --color-line: #e2dccc;
+  --font-display: Georgia, "Times New Roman", serif;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-white p-5 shadow-[0_1px_3px_rgba(38,35,29,0.06)];
+  }
+  .btn-primary {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-medium text-cream transition hover:bg-ink/85 disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-sand disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-terra {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-terra px-4 py-2.5 text-sm font-medium text-white transition hover:bg-terra-deep disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink-soft transition hover:bg-sand hover:text-ink disabled:pointer-events-none disabled:opacity-50;
+  }
+  .input {
+    @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-ink-soft/50 focus:border-terra focus:ring-2 focus:ring-terra/20;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-semibold tracking-wide text-ink-soft uppercase;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-sand px-2.5 py-0.5 text-xs font-medium text-ink-soft;
+  }
+  .chip {
+    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white px-3.5 py-1.5 text-sm text-ink transition hover:border-terra/50;
+  }
+  .chip-active {
+    @apply border-terra bg-terra/10 text-terra-deep;
+  }
+}
+
+/* Druck-Export: nur den Hauptinhalt drucken */
+@media print {
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  .card {
+    box-shadow: none;
+    border-color: #ddd;
+    break-inside: avoid;
+  }
+}

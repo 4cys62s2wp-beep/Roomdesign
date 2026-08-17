@@ -1,0 +1,24 @@
+{
+  "name": "Roomdesign – Wohnungsplanung per Video",
+  "short_name": "Roomdesign",
+  "description": "Video-Rundgang aufnehmen, Räume und Maße erkennen lassen, Einrichtungsvorschläge mit 3D-Vorschau erhalten.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f4ec",
+  "theme_color": "#f7f4ec",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
