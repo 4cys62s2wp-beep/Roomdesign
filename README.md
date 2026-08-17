@@ -23,6 +23,16 @@ npm run dev        # http://localhost:3000
 
 Ohne weitere Konfiguration startet die App im **Demo-Modus**.
 
+### Vom Handy aus nutzen
+
+Browser erlauben den Kamerazugriff nur auf `localhost` oder über HTTPS. Für die Aufnahme mit dem Handy im gleichen WLAN daher:
+
+```bash
+npm run dev:https
+```
+
+Beim ersten Start erzeugt Next.js ein selbstsigniertes Zertifikat. Rufe auf dem Handy die angezeigte Netzwerk-Adresse auf (`https://192.168.x.x:3000`) und bestätige die Zertifikatswarnung. Klappt das nicht, funktioniert stattdessen immer der Weg **„Video hochladen"** — die Dateiauswahl des Handys bietet dort direkt „Video aufnehmen" an.
+
 ### Echte KI aktivieren
 
 1. API-Key auf [console.anthropic.com](https://console.anthropic.com) erstellen.
@@ -36,6 +46,7 @@ Kosten entstehen pro Analyse (bis zu 32 Bilder) und pro Designvorschlag (reiner 
 | Befehl | Zweck |
 | --- | --- |
 | `npm run dev` | Entwicklungsserver |
+| `npm run dev:https` | Entwicklungsserver mit HTTPS (selbstsigniert) — nötig, damit die Kamera-Aufnahme auf dem Handy im lokalen Netz funktioniert |
 | `npm run build` / `npm start` | Production-Build / -Server |
 | `npm run setup` | Prisma generate + DB anlegen (`data/app.db`) |
 | `npm run test` | Unit-Tests (Vitest): Geometrie, Fixtures, Layout, Möbel-Fit, CSV |
