@@ -11,7 +11,8 @@ import { OrbitControls, PointerLockControls } from "@react-three/drei";
 import { fetchJson } from "@/lib/client";
 import { buildWalls } from "@/lib/geometry/walls";
 import { docBounds, openingWorldSegment } from "@/lib/geometry/floorplan";
-import type { FloorPlanDoc, ProposalDoc } from "@/lib/types";
+import type { FloorPlanDoc, ProposalDoc, Vec2 } from "@/lib/types";
+import { resolveMove, walkStartPoint } from "@/lib/geometry/walk";
 import { Furniture } from "@/components/three/furniture";
 
 interface FloorPlanResponse {
@@ -115,12 +116,12 @@ export function ApartmentViewer({
           {mode === "orbit" ? (
             <OrbitControls target={center} maxPolarAngle={Math.PI / 2.05} minDistance={1.5} maxDistance={size * 4} />
           ) : (
-            <WalkControls start={[center[0], 1.55, center[2]]} />
+            <WalkControls doc={plan.data} fallbackStart={[center[0], center[2]]} />
           )}
         </Canvas>
         {mode === "walk" && (
           <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-xs text-white">
-            Klicken zum Umsehen · WASD/Pfeiltasten zum Gehen · ESC beendet
+            Klicken zum Umsehen · WASD/Pfeiltasten zum Gehen · Wände halten · ESC beendet
           </div>
         )}
       </div>
@@ -309,12 +310,28 @@ function hashString(value: string): number {
 
 // ------------------------------------------------------------- Ego-Modus
 
-function WalkControls({ start }: { start: [number, number, number] }) {
+/** Augenhöhe im Rundgang (m). */
+const EYE_HEIGHT_M = 1.55;
+/** Gehgeschwindigkeit (m/s). */
+const WALK_SPEED_MS = 2.2;
+
+function WalkControls({
+  doc,
+  fallbackStart,
+}: {
+  doc: FloorPlanDoc;
+  fallbackStart: [number, number];
+}) {
   const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
-    camera.position.set(start[0], start[1], start[2]);
+    // In einem begehbaren Raum starten, nicht zwangsläufig in der Mitte der
+    // Bounding-Box — die kann bei verwinkelten Wohnungen in einer Wand liegen.
+    const start = walkStartPoint(doc);
+    const point = start ?? [fallbackStart[0] * 100, fallbackStart[1] * 100];
+    camera.position.set(point[0] / 100, EYE_HEIGHT_M, point[1] / 100);
+
     const down = (event: KeyboardEvent) => {
       keys.current[event.key.toLowerCase()] = true;
     };
@@ -327,22 +344,35 @@ function WalkControls({ start }: { start: [number, number, number] }) {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
     };
-  }, [camera, start]);
+  }, [camera, doc, fallbackStart]);
 
   useFrame((_, delta) => {
-    const speed = 2.2 * delta;
+    // Bildruckler begrenzen: Ohne Deckel entsteht nach einem Hänger ein
+    // Riesenschritt, der die Wandprüfung unnötig auf die Probe stellt.
+    const speed = WALK_SPEED_MS * Math.min(delta, 0.1);
+
     const forward = new THREE.Vector3();
     camera.getWorldDirection(forward);
     forward.y = 0;
     forward.normalize();
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
 
+    const move = new THREE.Vector3();
     const pressed = keys.current;
-    if (pressed["w"] || pressed["arrowup"]) camera.position.addScaledVector(forward, speed);
-    if (pressed["s"] || pressed["arrowdown"]) camera.position.addScaledVector(forward, -speed);
-    if (pressed["a"] || pressed["arrowleft"]) camera.position.addScaledVector(right, -speed);
-    if (pressed["d"] || pressed["arrowright"]) camera.position.addScaledVector(right, speed);
-    camera.position.y = 1.55;
+    if (pressed["w"] || pressed["arrowup"]) move.addScaledVector(forward, speed);
+    if (pressed["s"] || pressed["arrowdown"]) move.addScaledVector(forward, -speed);
+    if (pressed["a"] || pressed["arrowleft"]) move.addScaledVector(right, -speed);
+    if (pressed["d"] || pressed["arrowright"]) move.addScaledVector(right, speed);
+
+    camera.position.y = EYE_HEIGHT_M;
+    if (move.lengthSq() === 0) return;
+
+    // Szene rechnet in Metern, der Grundriss in Zentimetern
+    const from: Vec2 = [camera.position.x * 100, camera.position.z * 100];
+    const to: Vec2 = [(camera.position.x + move.x) * 100, (camera.position.z + move.z) * 100];
+    const resolved = resolveMove(doc, from, to);
+    camera.position.x = resolved[0] / 100;
+    camera.position.z = resolved[1] / 100;
   });
 
   return <PointerLockControls />;

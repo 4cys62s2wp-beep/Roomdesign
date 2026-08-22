@@ -8,9 +8,9 @@
 - **Video-Aufnahme direkt im Browser** (PWA, Handy-Kamera) oder Video-Upload. Während des Rundgangs kannst du antippen, in welchem Raum du gerade bist (Raum-Tagging); die App führt dich dann pro Raum durch den immer gleichen Dreischritt und warnt, wenn das Video zu lang wird.
 - **Datensparsam:** Das Video verlässt das Gerät nicht — im Browser werden ~28 Standbilder extrahiert und nur diese hochgeladen.
 - **KI-Analyse (Claude):** erkennt Räume, schätzt Maße über Referenzobjekte (Türhöhe ≈ 200 cm), verortet Türen/Fenster/Durchgänge und baut per Auto-Layout einen Grundriss. Alle Werte sind als Schätzungen markiert.
-- **Grundriss-Editor (SVG):** Räume verschieben, Ecken ziehen, Maße numerisch korrigieren, Türen/Fenster anlegen und verschieben, Undo, Zoom/Pan, Versionierung.
-- **Design-Studio pro Raum:** Stil-Presets (Japandi, Skandinavisch, Industrial, …), Freitext-Wünsche, Budget. Die KI liefert strukturierte Vorschläge: Konzept, Farbpalette, Materialien, Möbel mit echten Maßen + Platzierung, Lichtplan, Tipps, Preise. Vorschläge vergleichen, favorisieren und mit Feedback überarbeiten („mehr Holz, weniger Deko“).
-- **3D-Rundgang (Three.js):** Die Wohnung wird aus dem Grundriss gebaut (Wände mit echten Öffnungen, Fensterglas) und mit prozeduralen Möbelmodellen in Originalgröße eingerichtet — Orbit-Ansicht und Ego-Modus (WASD). Keine Bild-KI-Kosten.
+- **Grundriss-Editor (SVG):** Räume verschieben, Ecken ziehen, **Ecken einfügen und entfernen für L-förmige Räume** (Türen und Fenster wandern automatisch mit), Maße numerisch korrigieren, Türen/Fenster anlegen und verschieben, Undo, Zoom/Pan, Versionierung. KI-Schätzungen sind gestrichelt markiert, bis du sie bestätigst.
+- **Design-Studio pro Raum:** Stil-Presets (Japandi, Skandinavisch, Industrial, …), Freitext-Wünsche, Budget. Die KI liefert strukturierte Vorschläge: Konzept, Farbpalette, Materialien, Möbel mit echten Maßen + Platzierung, Lichtplan, Tipps, Preise. Vorschläge vergleichen, favorisieren und mit Feedback überarbeiten („mehr Holz, weniger Deko“). **Möbel lassen sich anschließend selbst verschieben, drehen und entfernen** — die Änderungen werden serverseitig geprüft und ins Budget eingerechnet.
+- **3D-Rundgang (Three.js):** Die Wohnung wird aus dem Grundriss gebaut (Wände mit echten Öffnungen, Fensterglas) und mit prozeduralen Möbelmodellen in Originalgröße eingerichtet — Orbit-Ansicht und Ego-Modus (WASD) **mit Wandkollision** — Türen und Durchgänge lassen sich passieren, Wände halten. Keine Bild-KI-Kosten.
 - **Einkaufsliste & Budget:** aggregiert die favorisierten Vorschläge, CSV-Export, Druck-/PDF-Ansicht.
 - **Demo-Modus:** Ohne API-Key läuft die komplette App mit einer realistischen Beispielwohnung — ideal zum Ausprobieren.
 
@@ -50,8 +50,8 @@ Kosten entstehen pro Analyse (bis zu 32 Bilder) und pro Designvorschlag (reiner 
 | `npm run dev:https` | Entwicklungsserver mit HTTPS (selbstsigniert) — nötig, damit die Kamera-Aufnahme auf dem Handy im lokalen Netz funktioniert |
 | `npm run build` / `npm start` | Production-Build / -Server |
 | `npm run setup` | Prisma generate + DB anlegen (`data/app.db`) |
-| `npm run test` | Unit-Tests (Vitest): Geometrie, Fixtures, Layout, Möbel-Fit, CSV |
-| `npm run e2e` | End-to-End-Test (Playwright): kompletter Demo-Durchlauf |
+| `npm run test` | Unit-Tests (Vitest): Geometrie, Wände, Raumform, Begehbarkeit, Fixtures, Layout, Möbel-Fit, CSV |
+| `npm run e2e` | End-to-End-Tests (Playwright): Demo-Durchlauf, Aufnahme-Anleitung, Raumform & Möbel anordnen |
 
 ## Architektur
 

@@ -11,10 +11,14 @@ import { fetchJson } from "@/lib/client";
 import {
   clampOpeningToEdge,
   docBounds,
+  insertVertex,
+  openingMidpoints,
   openingWorldSegment,
   polygonBounds,
   projectOnEdge,
+  reattachOpenings,
   rect,
+  removeVertex,
   roomAreaM2,
   roomEdge,
   validateFloorPlan,
@@ -42,7 +46,15 @@ type Selection =
   | { kind: "room"; roomId: string }
   | { kind: "opening"; openingId: string }
   | { kind: "edge"; roomId: string; edgeIndex: number }
+  | { kind: "vertex"; roomId: string; index: number }
   | null;
+
+/** Welcher Raum ist gerade in Bearbeitung — unabhängig davon, ob Raum,
+ *  Wand oder Ecke ausgewählt wurde. */
+function activeRoomId(selection: Selection): string | null {
+  if (!selection) return null;
+  return selection.kind === "opening" ? null : selection.roomId;
+}
 
 type DragState =
   | { type: "vertex"; roomId: string; index: number }
@@ -306,6 +318,28 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
     });
   };
 
+  const addVertex = (roomId: string, edgeIndex: number) => {
+    mutate((draft) => {
+      const room = draft.rooms.find((r) => r.id === roomId);
+      if (!room) return;
+      // Positionen der Öffnungen sichern, BEVOR sich die Kantenindizes verschieben
+      const before = openingMidpoints(draft, roomId);
+      room.polygon = insertVertex(room.polygon, edgeIndex);
+      draft.openings = reattachOpenings(draft, roomId, before).openings;
+    });
+  };
+
+  const deleteVertex = (roomId: string, index: number) => {
+    mutate((draft) => {
+      const room = draft.rooms.find((r) => r.id === roomId);
+      if (!room || room.polygon.length <= 3) return;
+      const before = openingMidpoints(draft, roomId);
+      room.polygon = removeVertex(room.polygon, index);
+      draft.openings = reattachOpenings(draft, roomId, before).openings;
+    });
+    setSelection({ kind: "room", roomId });
+  };
+
   const addOpening = (roomId: string, edgeIndex: number, kind: Opening["kind"]) => {
     if (!doc) return;
     const room = doc.rooms.find((r) => r.id === roomId);
@@ -369,8 +403,9 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
 
   // ------------------------------------------------------- Abgeleitetes
   const issues = useMemo(() => (doc ? validateFloorPlan(doc) : []), [doc]);
-  const selectedRoom =
-    doc && selection?.kind === "room" ? doc.rooms.find((r) => r.id === selection.roomId) : null;
+  const activeRoom = doc ? doc.rooms.find((r) => r.id === activeRoomId(selection)) ?? null : null;
+  const selectedRoom = activeRoom;
+  const selectedVertex = selection?.kind === "vertex" ? selection : null;
   const selectedOpening =
     doc && selection?.kind === "opening"
       ? doc.openings.find((o) => o.id === selection.openingId)
@@ -439,7 +474,7 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
 
           {/* Räume */}
           {doc.rooms.map((room) => {
-            const isSelected = selection?.kind === "room" && selection.roomId === room.id;
+            const isSelected = room.id === activeRoomId(selection);
             const centroid = polygonBounds([room.polygon]);
             const cx = (centroid.minX + centroid.maxX) / 2;
             const cy = (centroid.minY + centroid.maxY) / 2;
@@ -483,59 +518,6 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
                   {fmtM2(roomAreaM2(room))}
                 </text>
 
-                {/* Kanten-Klickziele + Maße für ausgewählten Raum */}
-                {isSelected &&
-                  room.polygon.map((_, edgeIndex) => {
-                    const edge = roomEdge(room, edgeIndex);
-                    const mx = (edge.a[0] + edge.b[0]) / 2;
-                    const my = (edge.a[1] + edge.b[1]) / 2;
-                    const isEdgeSelected =
-                      selectedEdge?.roomId === room.id && selectedEdge.edgeIndex === edgeIndex;
-                    return (
-                      <g key={edgeIndex}>
-                        <line
-                          x1={edge.a[0]}
-                          y1={edge.a[1]}
-                          x2={edge.b[0]}
-                          y2={edge.b[1]}
-                          stroke={isEdgeSelected ? "#b5674c" : "transparent"}
-                          strokeWidth={16}
-                          className="cursor-pointer"
-                          onPointerDown={(event) => {
-                            event.stopPropagation();
-                            setSelection({ kind: "edge", roomId: room.id, edgeIndex });
-                          }}
-                        />
-                        <text
-                          x={mx + edge.dir[1] * 26}
-                          y={my - edge.dir[0] * 26}
-                          textAnchor="middle"
-                          className="pointer-events-none"
-                          style={{ fontSize: 17, fill: "#97523c" }}
-                        >
-                          {fmtMeters(edge.length)}
-                        </text>
-                      </g>
-                    );
-                  })}
-
-                {/* Eckpunkte des ausgewählten Raums */}
-                {isSelected &&
-                  room.polygon.map((point, index) => (
-                    <circle
-                      key={index}
-                      cx={point[0]}
-                      cy={point[1]}
-                      r={12}
-                      fill="#b5674c"
-                      stroke="#fff"
-                      strokeWidth={3}
-                      className="cursor-grab"
-                      onPointerDown={(event) =>
-                        startDrag(event, { type: "vertex", roomId: room.id, index })
-                      }
-                    />
-                  ))}
               </g>
             );
           })}
@@ -580,6 +562,89 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
               </g>
             );
           })}
+
+          {/* Bediengriffe zuletzt zeichnen, damit Türen und Fenster sie
+              nicht überdecken und Klicks abfangen */}
+          {activeRoom && (
+            <g>
+              {/* Kanten-Klickziele + Maße für ausgewählten Raum */}
+                {
+                  activeRoom.polygon.map((_, edgeIndex) => {
+                    const edge = roomEdge(activeRoom, edgeIndex);
+                    const mx = (edge.a[0] + edge.b[0]) / 2;
+                    const my = (edge.a[1] + edge.b[1]) / 2;
+                    const isEdgeSelected =
+                      selectedEdge?.roomId === activeRoom.id && selectedEdge.edgeIndex === edgeIndex;
+                    return (
+                      <g key={edgeIndex}>
+                        <line
+                          x1={edge.a[0]}
+                          y1={edge.a[1]}
+                          x2={edge.b[0]}
+                          y2={edge.b[1]}
+                          stroke={isEdgeSelected ? "#b5674c" : "transparent"}
+                          strokeWidth={16}
+                          className="cursor-pointer"
+                          onPointerDown={(event) => {
+                            event.stopPropagation();
+                            setSelection({ kind: "edge", roomId: activeRoom.id, edgeIndex });
+                          }}
+                        />
+                        <text
+                          x={mx + edge.dir[1] * 44}
+                          y={my - edge.dir[0] * 44}
+                          textAnchor="middle"
+                          className="pointer-events-none"
+                          style={{ fontSize: 17, fill: "#97523c" }}
+                        >
+                          {fmtMeters(edge.length)}
+                        </text>
+                        {/* Ecke auf dieser Wand einfügen */}
+                        <g
+                          className="cursor-pointer"
+                          data-testid="add-vertex"
+                          onPointerDown={(event) => {
+                            event.stopPropagation();
+                            addVertex(activeRoom.id, edgeIndex);
+                          }}
+                        >
+                          <title>Ecke einfügen (für L-förmige Räume)</title>
+                          <circle cx={mx} cy={my} r={11} fill="#fff" stroke="#b5674c" strokeWidth={2.5} />
+                          <path
+                            d={`M ${mx - 5} ${my} H ${mx + 5} M ${mx} ${my - 5} V ${my + 5}`}
+                            stroke="#b5674c"
+                            strokeWidth={2.5}
+                            strokeLinecap="round"
+                          />
+                        </g>
+                      </g>
+                    );
+                  })}
+
+              {/* Eckpunkte des ausgewählten Raums */}
+                {
+                  activeRoom.polygon.map((point, index) => {
+                    const isVertexSelected =
+                      selectedVertex?.roomId === activeRoom.id && selectedVertex.index === index;
+                    return (
+                      <circle
+                        key={index}
+                        cx={point[0]}
+                        cy={point[1]}
+                        r={isVertexSelected ? 15 : 12}
+                        fill={isVertexSelected ? "#26231d" : "#b5674c"}
+                        stroke="#fff"
+                        strokeWidth={3}
+                        className="cursor-grab"
+                        onPointerDown={(event) => {
+                          setSelection({ kind: "vertex", roomId: activeRoom.id, index });
+                          startDrag(event, { type: "vertex", roomId: activeRoom.id, index });
+                        }}
+                      />
+                    );
+                  })}
+            </g>
+          )}
         </svg>
       </div>
 
@@ -652,9 +717,34 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
                 Maße bestätigen ✓
               </button>
             )}
+            <div className="rounded-xl border border-line bg-sand/60 p-3">
+              <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">
+                Raumform
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                {selectedRoom.polygon.length} Ecken. Mit dem <strong>+</strong> auf einer Wand
+                fügst du eine Ecke ein — so entstehen L-förmige Räume. Türen und Fenster wandern
+                dabei automatisch mit.
+              </p>
+              {selectedVertex ? (
+                <button
+                  className="btn-secondary mt-2 w-full py-1.5 text-sm"
+                  disabled={selectedRoom.polygon.length <= 3}
+                  onClick={() => deleteVertex(selectedVertex.roomId, selectedVertex.index)}
+                  data-testid="delete-vertex"
+                >
+                  {selectedRoom.polygon.length <= 3
+                    ? "Mindestens 3 Ecken nötig"
+                    : `Ausgewählte Ecke entfernen`}
+                </button>
+              ) : (
+                <p className="mt-2 text-xs text-ink-soft/80">
+                  Ecke antippen, um sie zu entfernen.
+                </p>
+              )}
+            </div>
             <p className="text-xs text-ink-soft">
               Tipp: Klicke eine Wand des Raums an, um dort eine Tür oder ein Fenster einzufügen.
-              Ecken lassen sich mit den orangen Punkten ziehen.
             </p>
             <button
               className="btn-ghost w-full text-terra-deep"
@@ -776,6 +866,7 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
             <h2 className="font-display text-lg font-semibold text-ink">So funktioniert&apos;s</h2>
             <p>• Raum antippen: auswählen & verschieben</p>
             <p>• Orange Eckpunkte ziehen: Form ändern</p>
+            <p>• <strong>+</strong> auf einer Wand: Ecke einfügen (L-Räume)</p>
             <p>• Wand antippen: Tür/Fenster einfügen</p>
             <p>• Öffnung antippen: bearbeiten & verschieben</p>
             <p>• Mausrad: zoomen · Fläche ziehen: verschieben</p>

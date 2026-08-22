@@ -79,3 +79,81 @@ test("Aufnahme-Anleitung ist vor der Aufnahme erreichbar", async ({ page }) => {
   await page.getByRole("button", { name: "Checkliste" }).click();
   await expect(page.getByText(/Objektiv auf 1×/)).toBeVisible();
 });
+
+test("Raumform ändern und Möbel selbst anordnen", async ({ page }) => {
+  await page.goto("/");
+  await page.getByTestId("new-project-name").fill(`E2E Editoren ${Date.now()}`);
+  await page.getByTestId("new-project-submit").click();
+  await page.waitForURL(/\/projects\/[a-z0-9]+$/);
+  const projectUrl = page.url();
+
+  await page.goto(`${projectUrl}/capture`);
+  await page.getByTestId("demo-analysis").click();
+  await expect(page.getByTestId("analysis-summary")).toBeVisible({ timeout: 45_000 });
+
+  // --- L-förmiger Raum: Ecke einfügen ---
+  await page.goto(`${projectUrl}/floorplan`);
+  const firstRoom = page.locator('[data-testid="floorplan-svg"] polygon').first();
+  await firstRoom.click();
+
+  const countPoints = async () =>
+    ((await firstRoom.getAttribute("points")) ?? "").trim().split(/\s+/).length;
+
+  const pointsBefore = await countPoints();
+  await page.getByTestId("add-vertex").first().click();
+  expect(await countPoints()).toBe(pointsBefore + 1);
+
+  // Speichern und nach dem Neuladen prüfen, dass die Form erhalten bleibt
+  await page.getByTestId("save-floorplan").click();
+  await expect(page.getByTestId("save-floorplan")).toHaveText(/Gespeichert/, { timeout: 10_000 });
+  await page.reload();
+  await page.locator('[data-testid="floorplan-svg"] polygon').first().click();
+  expect(await countPoints()).toBe(pointsBefore + 1);
+
+  // --- Möbel anordnen ---
+  await page.goto(projectUrl);
+  await page.getByTestId("room-card").first().click();
+  await page.waitForURL(/\/design$/);
+  await page.getByTestId("generate-designs").click();
+  await expect(page.getByTestId("proposal-card").first()).toBeVisible({ timeout: 60_000 });
+
+  // Anordnung aller Möbel vor der Änderung festhalten. Bewusst als Gesamtbild:
+  // Welches Stück der Zeiger greift, hängt davon ab, was oben liegt — ein
+  // Teppich etwa liegt unter dem Couchtisch.
+  const layout = async () =>
+    (await page.getByTestId("preview-item").locator("rect").first().all()).length === 0
+      ? ""
+      : (
+          await page
+            .getByTestId("preview-item")
+            .evaluateAll((nodes) =>
+              nodes
+                .map((n) => {
+                  const r = n.querySelector("rect");
+                  return `${n.getAttribute("data-item")}:${r?.getAttribute("x")},${r?.getAttribute("y")}`;
+                })
+                .join("|"),
+            )
+        );
+  const layoutBefore = await layout();
+  expect(layoutBefore).not.toBe("");
+
+  await page.getByTestId("arrange-furniture").first().click();
+  await expect(page.getByTestId("furniture-editor")).toBeVisible();
+
+  // Erstes Möbelstück ein Stück verschieben
+  const handle = page.getByTestId("furniture-item").first();
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2 + 25, { steps: 8 });
+  await page.mouse.up();
+
+  await page.getByTestId("save-layout").click();
+  await expect(page.getByTestId("furniture-editor")).toHaveCount(0, { timeout: 15_000 });
+
+  // Nach dem Speichern liegt die Anordnung anders — und das überlebt einen Neuladen
+  await page.reload();
+  await expect(page.getByTestId("preview-item").first()).toBeVisible();
+  expect(await layout()).not.toBe(layoutBefore);
+});
