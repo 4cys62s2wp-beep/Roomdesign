@@ -37,6 +37,12 @@ export interface RoomShape {
   id: string;
   name: string;
   type: RoomType;
+  /**
+   * Etage, 0 = Erdgeschoss bzw. die Wohnebene. Optional, damit früher
+   * gespeicherte Grundrisse ohne dieses Feld weiterhin gelesen werden können —
+   * sie gelten dann als Etage 0.
+   */
+  level?: number;
   /** Eckpunkte des Raums, im Uhrzeigersinn. Kante i verläuft von Punkt i zu Punkt i+1. */
   polygon: Vec2[];
   ceilingHeightCm: number;
@@ -60,6 +66,9 @@ export interface Opening {
   /** Brüstungshöhe bei Fenstern (cm über Boden). */
   sillCm?: number;
 }
+
+/** Höhe der Geschossdecke zwischen zwei Etagen (cm). */
+export const SLAB_THICKNESS_CM = 30;
 
 export interface FloorPlanDoc {
   unit: "cm";

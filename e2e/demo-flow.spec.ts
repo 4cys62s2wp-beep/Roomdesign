@@ -157,3 +157,73 @@ test("Raumform ändern und Möbel selbst anordnen", async ({ page }) => {
   await expect(page.getByTestId("preview-item").first()).toBeVisible();
   expect(await layout()).not.toBe(layoutBefore);
 });
+
+test("Umbenennen, Etage, Wiederherstellen und PDF-Export", async ({ page }) => {
+  await page.goto("/");
+  await page.getByTestId("new-project-name").fill(`E2E Extras ${Date.now()}`);
+  await page.getByTestId("new-project-submit").click();
+  await page.waitForURL(/\/projects\/[a-z0-9]+$/);
+  const projectUrl = page.url();
+
+  await page.goto(`${projectUrl}/capture`);
+  await page.getByTestId("demo-analysis").click();
+  await expect(page.getByTestId("analysis-summary")).toBeVisible({ timeout: 45_000 });
+
+  // --- Projekt umbenennen ---
+  const newName = `Dachgeschoss ${Date.now()}`;
+  await page.goto(projectUrl);
+  await page.getByTestId("rename-start").click();
+  await page.getByTestId("rename-input").fill(newName);
+  await page.getByTestId("rename-save").click();
+  await expect(page.getByRole("heading", { name: newName })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: newName })).toBeVisible();
+
+  // --- Zweite Etage anlegen und einen Raum hochschieben ---
+  await page.goto(`${projectUrl}/floorplan`);
+  const rooms = page.locator('[data-testid="floorplan-svg"] polygon');
+  await expect(rooms).toHaveCount(5);
+  await rooms.first().click();
+  await page.getByTestId("add-level").click();
+  // Die neue Etage ist leer, bis ein Raum ihr zugeordnet wird
+  await expect(rooms).toHaveCount(0);
+
+  await page.getByTestId("level-tabs").getByText("Erdgeschoss").click();
+  await rooms.first().click();
+  await page.getByTestId("room-level").selectOption("1");
+  await expect(rooms).toHaveCount(1);
+  await page.getByTestId("save-floorplan").click();
+  await expect(page.getByTestId("save-floorplan")).toHaveText(/Gespeichert/, { timeout: 10_000 });
+
+  // Etagen-Zuordnung überlebt das Neuladen
+  await page.reload();
+  await expect(page.getByTestId("level-tabs").getByText("1. Obergeschoss")).toBeVisible();
+  await expect(rooms).toHaveCount(4);
+
+  // --- Vorschlag löschen und wiederherstellen ---
+  await page.goto(projectUrl);
+  await page.getByTestId("room-card").first().click();
+  await page.waitForURL(/\/design$/);
+  await page.getByTestId("generate-designs").click();
+  await expect(page.getByTestId("proposal-card").first()).toBeVisible({ timeout: 60_000 });
+  const cards = page.getByTestId("proposal-card");
+  const countBefore = await cards.count();
+  expect(countBefore).toBeGreaterThan(0);
+
+  await page.getByTestId("favorite-toggle").first().click();
+  await cards.first().getByTitle("Löschen").click();
+  await expect(cards).toHaveCount(countBefore - 1);
+  await expect(page.getByTestId("undo-delete")).toBeVisible();
+  await page.getByRole("button", { name: /Wiederherstellen/ }).click();
+  await expect(cards).toHaveCount(countBefore);
+  await expect(page.getByTestId("undo-delete")).toHaveCount(0);
+
+  // --- Druckfertiges Konzept ---
+  await page.goto(`${projectUrl}/export`);
+  await expect(page.getByTestId("export-doc")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { name: newName })).toBeVisible();
+  // Beide Etagen bekommen einen eigenen Grundriss
+  await expect(page.getByRole("heading", { name: /Grundriss · Erdgeschoss/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Grundriss · 1\. Obergeschoss/ })).toBeVisible();
+  await expect(page.getByTestId("export-room").first()).toBeVisible();
+});

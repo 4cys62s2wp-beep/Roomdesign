@@ -10,7 +10,14 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, PointerLockControls } from "@react-three/drei";
 import { fetchJson } from "@/lib/client";
 import { buildWalls } from "@/lib/geometry/walls";
-import { docBounds, openingWorldSegment } from "@/lib/geometry/floorplan";
+import {
+  docBounds,
+  docForLevel,
+  docLevels,
+  levelBaseCm,
+  levelLabel,
+  openingWorldSegment,
+} from "@/lib/geometry/floorplan";
 import type { FloorPlanDoc, ProposalDoc, Vec2 } from "@/lib/types";
 import { resolveMove, walkStartPoint } from "@/lib/geometry/walk";
 import { Furniture } from "@/components/three/furniture";
@@ -41,6 +48,7 @@ export function ApartmentViewer({
   const [selected, setSelected] = useState<Record<string, string | "">>({});
   const [furnished, setFurnished] = useState(true);
   const [mode, setMode] = useState<"orbit" | "walk">("orbit");
+  const [walkLevel, setWalkLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -112,11 +120,23 @@ export function ApartmentViewer({
           <hemisphereLight intensity={0.55} color="#fffaf0" groundColor="#b0a58f" />
           <directionalLight position={[6, 12, 4]} intensity={1.1} />
           <ambientLight intensity={0.25} />
-          <ApartmentMesh doc={plan.data} proposals={activeProposals} furnished={furnished} />
+          {docLevels(plan.data).map((level) => (
+            <group key={level} position={[0, levelBaseCm(plan.data, level) / 100, 0]}>
+              <ApartmentMesh
+                doc={docForLevel(plan.data, level)}
+                proposals={activeProposals}
+                furnished={furnished}
+              />
+            </group>
+          ))}
           {mode === "orbit" ? (
             <OrbitControls target={center} maxPolarAngle={Math.PI / 2.05} minDistance={1.5} maxDistance={size * 4} />
           ) : (
-            <WalkControls doc={plan.data} fallbackStart={[center[0], center[2]]} />
+            <WalkControls
+              doc={docForLevel(plan.data, walkLevel)}
+              baseHeightM={levelBaseCm(plan.data, walkLevel) / 100}
+              fallbackStart={[center[0], center[2]]}
+            />
           )}
         </Canvas>
         {mode === "walk" && (
@@ -152,6 +172,25 @@ export function ApartmentViewer({
             />
             Eingerichtet anzeigen
           </label>
+          {docLevels(plan.data).length > 1 && mode === "walk" && (
+            <div>
+              <label className="label">Etage für den Rundgang</label>
+              <select
+                className="input"
+                value={walkLevel}
+                onChange={(event) => setWalkLevel(Number(event.target.value))}
+              >
+                {docLevels(plan.data).map((level) => (
+                  <option key={level} value={level}>
+                    {levelLabel(level)}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-ink-soft">
+                Treppen sind nicht abgebildet — die Etage wird hier gewechselt.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="card space-y-3">
@@ -317,9 +356,11 @@ const WALK_SPEED_MS = 2.2;
 
 function WalkControls({
   doc,
+  baseHeightM,
   fallbackStart,
 }: {
   doc: FloorPlanDoc;
+  baseHeightM: number;
   fallbackStart: [number, number];
 }) {
   const { camera } = useThree();
@@ -330,7 +371,7 @@ function WalkControls({
     // Bounding-Box — die kann bei verwinkelten Wohnungen in einer Wand liegen.
     const start = walkStartPoint(doc);
     const point = start ?? [fallbackStart[0] * 100, fallbackStart[1] * 100];
-    camera.position.set(point[0] / 100, EYE_HEIGHT_M, point[1] / 100);
+    camera.position.set(point[0] / 100, baseHeightM + EYE_HEIGHT_M, point[1] / 100);
 
     const down = (event: KeyboardEvent) => {
       keys.current[event.key.toLowerCase()] = true;
@@ -344,7 +385,7 @@ function WalkControls({
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
     };
-  }, [camera, doc, fallbackStart]);
+  }, [camera, doc, baseHeightM, fallbackStart]);
 
   useFrame((_, delta) => {
     // Bildruckler begrenzen: Ohne Deckel entsteht nach einem Hänger ein
@@ -364,7 +405,7 @@ function WalkControls({
     if (pressed["a"] || pressed["arrowleft"]) move.addScaledVector(right, -speed);
     if (pressed["d"] || pressed["arrowright"]) move.addScaledVector(right, speed);
 
-    camera.position.y = EYE_HEIGHT_M;
+    camera.position.y = baseHeightM + EYE_HEIGHT_M;
     if (move.lengthSq() === 0) return;
 
     // Szene rechnet in Metern, der Grundriss in Zentimetern
