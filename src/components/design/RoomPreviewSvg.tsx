@@ -64,7 +64,7 @@ export function RoomPreviewSvg({
         );
       })}
       {[...rugs, ...solid].map((item) => (
-        <g key={item.id} transform={`rotate(${item.rotationDeg} ${item.x} ${item.y})`}>
+        <g key={item.id} data-testid="preview-item" data-item={item.id} transform={`rotate(${item.rotationDeg} ${item.x} ${item.y})`}>
           <rect
             x={item.x - item.wCm / 2}
             y={item.y - item.dCm / 2}
@@ -83,8 +83,10 @@ export function RoomPreviewSvg({
               y={item.y}
               textAnchor="middle"
               dominantBaseline="middle"
+              // Beschriftung immer aufrecht halten: ohne Gegenrotation stünde
+              // sie bei 180° auf dem Kopf und bei 90° quer.
               transform={
-                item.rotationDeg % 180 !== 0 ? `rotate(${-item.rotationDeg} ${item.x} ${item.y})` : undefined
+                item.rotationDeg !== 0 ? `rotate(${-item.rotationDeg} ${item.x} ${item.y})` : undefined
               }
               style={{ fontSize: 15, fill: "#26231d", opacity: 0.75 }}
             >

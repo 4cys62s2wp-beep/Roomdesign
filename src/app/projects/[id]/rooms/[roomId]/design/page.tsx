@@ -9,10 +9,11 @@ import { useParams, useRouter } from "next/navigation";
 import { fetchJson } from "@/lib/client";
 import { useJob } from "@/lib/useJob";
 import { fmtEur, fmtM2 } from "@/lib/format";
-import { STYLE_PRESETS, type FloorPlanDoc, type ProposalDoc } from "@/lib/types";
+import { STYLE_PRESETS, type FloorPlanDoc, type FurnitureItem, type ProposalDoc } from "@/lib/types";
 import { roomAreaM2 } from "@/lib/geometry/floorplan";
 import { Markdown } from "@/components/Markdown";
 import { RoomPreviewSvg } from "@/components/design/RoomPreviewSvg";
+import { FurniturePlanEditor } from "@/components/design/FurniturePlanEditor";
 
 interface FloorPlanResponse {
   data: FloorPlanDoc;
@@ -46,6 +47,9 @@ export default function DesignStudioPage() {
   const { job } = useJob(jobId);
 
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftFurniture, setDraftFurniture] = useState<FurnitureItem[]>([]);
+  const [savingLayout, setSavingLayout] = useState(false);
   const [compare, setCompare] = useState<string[]>([]);
   const [refineText, setRefineText] = useState<Record<string, string>>({});
 
@@ -123,6 +127,28 @@ export default function DesignStudioPage() {
       setJobId(response.jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const startEditing = (proposal: ProposalRow) => {
+    setEditingId(proposal.id);
+    setDraftFurniture(proposal.data.furniture);
+  };
+
+  const saveLayout = async () => {
+    if (!editingId) return;
+    setSavingLayout(true);
+    try {
+      await fetchJson(`/api/proposals/${editingId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ furniture: draftFurniture }),
+      });
+      setEditingId(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingLayout(false);
     }
   };
 
@@ -362,13 +388,45 @@ export default function DesignStudioPage() {
                   </div>
                 </div>
 
-                <RoomPreviewSvg
-                  doc={floorPlan.data}
-                  room={roomShape}
-                  furniture={proposal.data.furniture}
-                  floorColorHex={proposal.data.floor.colorHex}
-                  className="max-h-64 w-full rounded-xl border border-line bg-white"
-                />
+                {editingId === proposal.id ? (
+                  <div className="space-y-3">
+                    <FurniturePlanEditor
+                      doc={floorPlan.data}
+                      room={roomShape}
+                      furniture={draftFurniture}
+                      floorColorHex={proposal.data.floor.colorHex}
+                      onChange={setDraftFurniture}
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        className="btn-primary px-3.5 py-1.5 text-sm"
+                        onClick={saveLayout}
+                        disabled={savingLayout}
+                        data-testid="save-layout"
+                      >
+                        {savingLayout ? "Speichert …" : "Anordnung speichern"}
+                      </button>
+                      <button
+                        className="btn-secondary px-3.5 py-1.5 text-sm"
+                        onClick={() => setEditingId(null)}
+                        disabled={savingLayout}
+                      >
+                        Verwerfen
+                      </button>
+                      <span className="text-xs text-ink-soft">
+                        {draftFurniture.length} Möbelstücke
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <RoomPreviewSvg
+                    doc={floorPlan.data}
+                    room={roomShape}
+                    furniture={proposal.data.furniture}
+                    floorColorHex={proposal.data.floor.colorHex}
+                    className="max-h-64 w-full rounded-xl border border-line bg-white"
+                  />
+                )}
 
                 <div className="flex items-center gap-1.5">
                   {proposal.data.palette.slice(0, 6).map((color, index) => (
@@ -389,6 +447,15 @@ export default function DesignStudioPage() {
                       />
                       Vergleichen
                     </label>
+                    {editingId !== proposal.id && (
+                      <button
+                        className="btn-secondary px-3 py-1.5 text-xs"
+                        onClick={() => startEditing(proposal)}
+                        data-testid="arrange-furniture"
+                      >
+                        Möbel anordnen
+                      </button>
+                    )}
                     <Link
                       href={`/projects/${projectId}/view3d?proposal=${proposal.id}`}
                       className="btn-secondary px-3 py-1.5 text-xs"

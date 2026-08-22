@@ -221,3 +221,106 @@ export function rect(x: number, y: number, w: number, h: number): Vec2[] {
     [x, y + h],
   ];
 }
+
+/** Kürzester Abstand eines Punkts zu einer Strecke. */
+export function distanceToSegment(point: Vec2, a: Vec2, b: Vec2): number {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq < 1e-9) return Math.hypot(point[0] - a[0], point[1] - a[1]);
+  let t = ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / lengthSq;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(point[0] - (a[0] + dx * t), point[1] - (a[1] + dy * t));
+}
+
+/**
+ * Öffnungen eines Raums nach einer Formänderung neu anheften.
+ *
+ * Türen und Fenster verweisen über einen Kantenindex auf ihre Wand. Sobald
+ * Ecken eingefügt oder gelöscht werden, verschieben sich diese Indizes — ein
+ * bloßes Umrechnen wäre fehleranfällig. Stattdessen werden die Öffnungen
+ * anhand ihrer Weltposition (Mittelpunkt vor der Änderung) auf die jetzt
+ * nächstgelegene Kante gesetzt.
+ */
+export function reattachOpenings(
+  doc: FloorPlanDoc,
+  roomId: string,
+  midpointsBefore: Map<string, Vec2>,
+): FloorPlanDoc {
+  const room = doc.rooms.find((r) => r.id === roomId);
+  if (!room) return doc;
+
+  const openings = doc.openings.map((opening) => {
+    if (opening.wall.roomId !== roomId) return opening;
+    const midpoint = midpointsBefore.get(opening.id);
+    if (!midpoint) return opening;
+
+    let bestEdge = 0;
+    let bestDistance = Infinity;
+    for (let index = 0; index < room.polygon.length; index++) {
+      const edge = roomEdge(room, index);
+      const distance = distanceToSegment(midpoint, edge.a, edge.b);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestEdge = index;
+      }
+    }
+
+    const edge = roomEdge(room, bestEdge);
+    const { t } = projectOnEdge(edge, midpoint);
+    return clampOpeningToEdge(doc, {
+      ...opening,
+      wall: { roomId, edgeIndex: bestEdge },
+      offsetCm: t - opening.widthCm / 2,
+    });
+  });
+
+  return { ...doc, openings };
+}
+
+/** Mittelpunkte aller Öffnungen eines Raums (für reattachOpenings). */
+export function openingMidpoints(doc: FloorPlanDoc, roomId: string): Map<string, Vec2> {
+  const map = new Map<string, Vec2>();
+  for (const opening of doc.openings) {
+    if (opening.wall.roomId !== roomId) continue;
+    const segment = openingWorldSegment(doc, opening);
+    if (segment) {
+      map.set(opening.id, [
+        (segment.a[0] + segment.b[0]) / 2,
+        (segment.a[1] + segment.b[1]) / 2,
+      ]);
+    }
+  }
+  return map;
+}
+
+/** Fügt auf der Mitte der Kante `edgeIndex` eine neue Ecke ein. */
+export function insertVertex(polygon: Vec2[], edgeIndex: number): Vec2[] {
+  const next = [...polygon];
+  const a = polygon[edgeIndex % polygon.length];
+  const b = polygon[(edgeIndex + 1) % polygon.length];
+  next.splice(edgeIndex + 1, 0, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+  return next;
+}
+
+/** Entfernt eine Ecke. Ein Polygon behält mindestens drei Ecken. */
+export function removeVertex(polygon: Vec2[], index: number): Vec2[] {
+  if (polygon.length <= 3) return polygon;
+  const next = [...polygon];
+  next.splice(index, 1);
+  return next;
+}
+
+/** Schnittpunkt zweier Strecken, sofern sie sich echt kreuzen. */
+export function segmentIntersection(p1: Vec2, p2: Vec2, p3: Vec2, p4: Vec2): Vec2 | null {
+  const d1x = p2[0] - p1[0];
+  const d1y = p2[1] - p1[1];
+  const d2x = p4[0] - p3[0];
+  const d2y = p4[1] - p3[1];
+  const denominator = d1x * d2y - d1y * d2x;
+  if (Math.abs(denominator) < 1e-9) return null; // parallel
+  const t = ((p3[0] - p1[0]) * d2y - (p3[1] - p1[1]) * d2x) / denominator;
+  const u = ((p3[0] - p1[0]) * d1y - (p3[1] - p1[1]) * d1x) / denominator;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  return [p1[0] + d1x * t, p1[1] + d1y * t];
+}
