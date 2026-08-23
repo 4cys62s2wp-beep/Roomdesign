@@ -21,3 +21,6 @@ coverage/
 # Sonstiges
 *.tsbuildinfo
 .DS_Store
+
+# Lokale HTTPS-Zertifikate (npm run dev:https)
+certificates/

@@ -27,13 +27,23 @@ Ohne weitere Konfiguration startet die App im **Demo-Modus**.
 
 ### Vom Handy aus nutzen
 
-Browser erlauben den Kamerazugriff nur auf `localhost` oder über HTTPS. Für die Aufnahme mit dem Handy im gleichen WLAN daher:
+Es gibt zwei Wege — der einfache braucht kein HTTPS:
+
+**Video hochladen (ohne HTTPS).** `npm run dev` starten, auf dem Handy die angezeigte Netzwerk-Adresse aufrufen (`http://192.168.x.x:3000`, gleiches WLAN) und auf der Aufnahme-Seite **„Video hochladen"** antippen. Die Dateiauswahl bietet dort „Video aufnehmen" an, öffnet die Kamera-App des Handys — danach zieht die App die Standbilder daraus. Gleiches Ergebnis, nur ohne das Raum-Antippen während des Gehens.
+
+**Aufnahme direkt im Browser (mit HTTPS).** Browser geben die Kamera nur auf `localhost` oder über HTTPS frei. Dafür:
 
 ```bash
 npm run dev:https
 ```
 
-Beim ersten Start erzeugt Next.js ein selbstsigniertes Zertifikat. Rufe auf dem Handy die angezeigte Netzwerk-Adresse auf (`https://192.168.x.x:3000`) und bestätige die Zertifikatswarnung. Klappt das nicht, funktioniert stattdessen immer der Weg **„Video hochladen"** — die Dateiauswahl des Handys bietet dort direkt „Video aufnehmen" an.
+Das Skript (`scripts/dev-https.mjs`) stellt mit [mkcert](https://github.com/FiloSottile/mkcert) ein Zertifikat aus, das `localhost` **und jede lokale Netzwerk-Adresse** dieses Rechners abdeckt, und startet `next dev` damit. Es gibt die passende `https://…`-Adresse fürs Handy aus.
+
+Bewusst *ohne* `mkcert -install`: Das würde eine Zertifizierungsstelle in den System-Schlüsselbund schreiben und nach dem Admin-Passwort fragen — dem Handy nützt dieser Eintrag ohnehin nichts, da es dem Rechner nicht vertraut. Beide Geräte zeigen deshalb beim ersten Aufruf eine Zertifikatswarnung („Erweitert" → „Trotzdem fortfahren"); danach ist die Seite ein sicherer Kontext und die Kamera wird freigegeben.
+
+Wer die Warnung auf dem eigenen Rechner loswerden will, führt den vom Skript ausgegebenen Befehl `mkcert -install` einmal von Hand aus — das ist eine bewusste Entscheidung und deshalb nicht automatisch.
+
+> `next dev --experimental-https` allein reicht hier nicht: Es stellt das Zertifikat nur für `localhost`/`127.0.0.1`/`::1` aus und ruft mkcert immer mit `-install` auf.
 
 ### Echte KI aktivieren
 
@@ -48,7 +58,7 @@ Kosten entstehen pro Analyse (bis zu 32 Bilder) und pro Designvorschlag (reiner 
 | Befehl | Zweck |
 | --- | --- |
 | `npm run dev` | Entwicklungsserver |
-| `npm run dev:https` | Entwicklungsserver mit HTTPS (selbstsigniert) — nötig, damit die Kamera-Aufnahme auf dem Handy im lokalen Netz funktioniert |
+| `npm run dev:https` | Entwicklungsserver mit HTTPS — Zertifikat für `localhost` und die Netzwerk-Adressen des Rechners, nötig für die Kamera-Aufnahme auf dem Handy |
 | `npm run build` / `npm start` | Production-Build / -Server |
 | `npm run setup` | Prisma generate + DB anlegen (`data/app.db`) |
 | `npm run test` | Unit-Tests (Vitest): Geometrie, Wände, Raumform, Begehbarkeit, Etagen, Fixtures, Layout, Möbel-Fit, CSV |
