@@ -4,7 +4,7 @@ import { getProvider } from "@/lib/ai";
 import type { FrameInput } from "@/lib/ai/types";
 import type { AnalysisJobPayload, FloorPlanDoc, RoomTag } from "@/lib/types";
 import { updateJobProgress } from "@/lib/jobs/queue";
-import { normalizeDoc, roomAreaM2 } from "@/lib/geometry/floorplan";
+import { normalizeDoc, roomAreaM2, roomLevel } from "@/lib/geometry/floorplan";
 
 export async function runAnalysisJob(jobId: string): Promise<void> {
   const job = await db.job.findUniqueOrThrow({ where: { id: jobId } });
@@ -75,12 +75,18 @@ export async function saveFloorPlan(
   for (const room of doc.rooms) {
     await db.room.upsert({
       where: { floorPlanId_key: { floorPlanId: floorPlan.id, key: room.id } },
-      update: { name: room.name, type: room.type, areaM2: roomAreaM2(room) },
+      update: {
+        name: room.name,
+        type: room.type,
+        level: roomLevel(room),
+        areaM2: roomAreaM2(room),
+      },
       create: {
         floorPlanId: floorPlan.id,
         key: room.id,
         name: room.name,
         type: room.type,
+        level: roomLevel(room),
         areaM2: roomAreaM2(room),
       },
     });

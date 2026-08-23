@@ -16,7 +16,11 @@ export async function GET(request: NextRequest, { params }: Params) {
     const floorPlan = await db.floorPlan.findUnique({
       where: { projectId },
       include: {
-        rooms: { include: { proposals: { orderBy: { createdAt: "desc" } } } },
+        rooms: {
+          include: {
+            proposals: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
+          },
+        },
         project: true,
       },
     });

@@ -63,7 +63,17 @@ body {
 }
 
 /* Druck-Export: nur den Hauptinhalt drucken */
+@page {
+  margin: 16mm;
+}
+
 @media print {
+  .page-break {
+    break-before: page;
+  }
+  .avoid-break {
+    break-inside: avoid;
+  }
   header,
   footer,
   .no-print {

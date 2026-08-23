@@ -50,6 +50,7 @@ export default function DesignStudioPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftFurniture, setDraftFurniture] = useState<FurnitureItem[]>([]);
   const [savingLayout, setSavingLayout] = useState(false);
+  const [justDeleted, setJustDeleted] = useState<{ id: string; title: string } | null>(null);
   const [compare, setCompare] = useState<string[]>([]);
   const [refineText, setRefineText] = useState<Record<string, string>>({});
 
@@ -109,9 +110,19 @@ export default function DesignStudioPage() {
     await load();
   };
 
+  // Bewusst ohne Sicherheitsabfrage: Der Vorschlag bleibt erhalten und lässt
+  // sich sofort wiederherstellen — das ist angenehmer als ein Bestätigungsdialog.
   const removeProposal = async (proposal: ProposalRow) => {
-    if (!confirm(`Vorschlag „${proposal.title}" löschen?`)) return;
     await fetchJson(`/api/proposals/${proposal.id}`, { method: "DELETE" });
+    setJustDeleted({ id: proposal.id, title: proposal.title });
+    if (editingId === proposal.id) setEditingId(null);
+    await load();
+  };
+
+  const restoreProposal = async () => {
+    if (!justDeleted) return;
+    await fetchJson(`/api/proposals/${justDeleted.id}/restore`, { method: "POST" });
+    setJustDeleted(null);
     await load();
   };
 
@@ -352,6 +363,23 @@ export default function DesignStudioPage() {
             </tbody>
           </table>
         </section>
+      )}
+
+      {justDeleted && (
+        <div
+          className="card flex flex-wrap items-center gap-3 border-terra/40 bg-terra/5"
+          data-testid="undo-delete"
+        >
+          <p className="mr-auto text-sm">
+            „{justDeleted.title}" wurde gelöscht.
+          </p>
+          <button className="btn-secondary px-3.5 py-1.5 text-sm" onClick={restoreProposal}>
+            ↩ Wiederherstellen
+          </button>
+          <button className="btn-ghost text-sm" onClick={() => setJustDeleted(null)}>
+            Schließen
+          </button>
+        </div>
       )}
 
       {/* ------------------------------------------------ Vorschläge */}

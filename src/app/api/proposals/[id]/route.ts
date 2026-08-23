@@ -111,10 +111,17 @@ function isValidFurniture(item: FurnitureItem): boolean {
   );
 }
 
+/**
+ * Sanftes Löschen: Der Vorschlag verschwindet aus allen Listen, bleibt aber
+ * erhalten, damit ein Fehlgriff rückgängig gemacht werden kann.
+ */
 export async function DELETE(_request: NextRequest, { params }: Params) {
   return withErrorHandling(async () => {
     const { id } = await params;
-    await db.designProposal.delete({ where: { id } });
-    return NextResponse.json({ ok: true });
+    const proposal = await db.designProposal.update({
+      where: { id },
+      data: { deletedAt: new Date(), isFavorite: false },
+    });
+    return NextResponse.json({ ok: true, id: proposal.id, restorable: true });
   });
 }

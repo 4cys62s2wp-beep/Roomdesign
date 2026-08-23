@@ -10,7 +10,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   return withErrorHandling(async () => {
     const { id: roomId } = await params;
     const proposals = await db.designProposal.findMany({
-      where: { roomId },
+      where: { roomId, deletedAt: null },
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(

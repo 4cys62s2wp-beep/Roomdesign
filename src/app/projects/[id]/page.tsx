@@ -38,6 +38,9 @@ export default function ProjectPage() {
   const [error, setError] = useState<string | null>(null);
   const [globalStyle, setGlobalStyle] = useState("");
   const [styleSaved, setStyleSaved] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [draftAddress, setDraftAddress] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -61,6 +64,23 @@ export default function ProjectPage() {
     const timer = setInterval(() => void load(), 2500);
     return () => clearInterval(timer);
   }, [project, load]);
+
+  const startRenaming = () => {
+    if (!project) return;
+    setDraftName(project.name);
+    setDraftAddress(project.address ?? "");
+    setRenaming(true);
+  };
+
+  const saveName = async () => {
+    if (!draftName.trim()) return;
+    await fetchJson(`/api/projects/${projectId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name: draftName, address: draftAddress }),
+    });
+    setRenaming(false);
+    await load();
+  };
 
   const saveGlobalStyle = async () => {
     await fetchJson(`/api/projects/${projectId}`, {
@@ -122,9 +142,63 @@ export default function ProjectPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">{project.name}</h1>
-          {project.address && <p className="text-sm text-ink-soft">{project.address}</p>}
+        <div className="min-w-0 flex-1">
+          {renaming ? (
+            <div className="max-w-lg space-y-2" data-testid="rename-form">
+              <input
+                className="input font-display text-xl"
+                value={draftName}
+                onChange={(event) => setDraftName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void saveName();
+                  if (event.key === "Escape") setRenaming(false);
+                }}
+                aria-label="Projektname"
+                autoFocus
+                data-testid="rename-input"
+              />
+              <input
+                className="input"
+                placeholder="Adresse (optional)"
+                value={draftAddress}
+                onChange={(event) => setDraftAddress(event.target.value)}
+                aria-label="Adresse"
+              />
+              <div className="flex gap-2">
+                <button
+                  className="btn-primary px-3.5 py-1.5 text-sm"
+                  onClick={saveName}
+                  disabled={!draftName.trim()}
+                  data-testid="rename-save"
+                >
+                  Speichern
+                </button>
+                <button
+                  className="btn-secondary px-3.5 py-1.5 text-sm"
+                  onClick={() => setRenaming(false)}
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <h1 className="font-display text-3xl font-semibold tracking-tight">
+                  {project.name}
+                </h1>
+                <button
+                  className="btn-ghost text-sm"
+                  onClick={startRenaming}
+                  title="Projekt umbenennen"
+                  data-testid="rename-start"
+                >
+                  Umbenennen
+                </button>
+              </div>
+              {project.address && <p className="text-sm text-ink-soft">{project.address}</p>}
+            </>
+          )}
         </div>
         {hasPlan && (
           <div className="flex gap-2">
@@ -133,6 +207,9 @@ export default function ProjectPage() {
             </Link>
             <Link href={`/projects/${project.id}/shopping`} className="btn-secondary">
               Einkaufsliste
+            </Link>
+            <Link href={`/projects/${project.id}/export`} className="btn-secondary">
+              Konzept als PDF
             </Link>
           </div>
         )}

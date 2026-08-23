@@ -1,6 +1,7 @@
 // Geometrie-Grundfunktionen für das Grundriss-Modell (FloorPlanDoc).
 // Wird vom SVG-Editor, dem 3D-Renderer und der Analyse-Pipeline gemeinsam genutzt.
 
+import { SLAB_THICKNESS_CM } from "@/lib/types";
 import type { FloorPlanDoc, Opening, RoomShape, Vec2 } from "@/lib/types";
 
 export interface Edge {
@@ -323,4 +324,49 @@ export function segmentIntersection(p1: Vec2, p2: Vec2, p3: Vec2, p4: Vec2): Vec
   const u = ((p3[0] - p1[0]) * d1y - (p3[1] - p1[1]) * d1x) / denominator;
   if (t < 0 || t > 1 || u < 0 || u > 1) return null;
   return [p1[0] + d1x * t, p1[1] + d1y * t];
+}
+
+/** Etage eines Raums. Fehlt die Angabe (ältere Grundrisse), gilt Etage 0. */
+export function roomLevel(room: RoomShape): number {
+  return room.level ?? 0;
+}
+
+/** Alle belegten Etagen, aufsteigend sortiert. */
+export function docLevels(doc: FloorPlanDoc): number[] {
+  const levels = new Set(doc.rooms.map(roomLevel));
+  if (levels.size === 0) levels.add(0);
+  return [...levels].sort((a, b) => a - b);
+}
+
+/** Nur die Räume und Öffnungen einer Etage. */
+export function docForLevel(doc: FloorPlanDoc, level: number): FloorPlanDoc {
+  const rooms = doc.rooms.filter((room) => roomLevel(room) === level);
+  const ids = new Set(rooms.map((room) => room.id));
+  return {
+    ...doc,
+    rooms,
+    openings: doc.openings.filter((opening) => ids.has(opening.wall.roomId)),
+  };
+}
+
+/**
+ * Höhe, auf der der Boden einer Etage liegt (cm über Etage 0).
+ * Jede Etage darunter trägt ihre höchste Deckenhöhe plus die Geschossdecke bei.
+ */
+export function levelBaseCm(doc: FloorPlanDoc, level: number): number {
+  let base = 0;
+  for (const lower of docLevels(doc)) {
+    if (lower >= level) break;
+    const rooms = doc.rooms.filter((room) => roomLevel(room) === lower);
+    const ceiling = Math.max(250, ...rooms.map((room) => room.ceilingHeightCm));
+    base += ceiling + SLAB_THICKNESS_CM;
+  }
+  return base;
+}
+
+/** Anzeigename einer Etage. */
+export function levelLabel(level: number): string {
+  if (level === 0) return "Erdgeschoss";
+  if (level > 0) return level === 1 ? "1. Obergeschoss" : `${level}. Obergeschoss`;
+  return level === -1 ? "Untergeschoss" : `${Math.abs(level)}. Untergeschoss`;
 }

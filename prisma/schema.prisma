@@ -77,6 +77,7 @@ model Room {
   key         String // Raum-ID innerhalb des FloorPlanDoc
   name        String
   type        String
+  level       Int              @default(0)
   areaM2      Float            @default(0)
   proposals   DesignProposal[]
 
@@ -91,9 +92,12 @@ model DesignProposal {
   stylePrompt  String?
   data         String // JSON ProposalDoc
   totalCostEur Float    @default(0)
-  isFavorite   Boolean  @default(false)
+  isFavorite   Boolean   @default(false)
   feedback     String? // JSON: Verlauf der Refine-Anweisungen
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
+  // Sanftes Löschen: Vorschläge bleiben erhalten, damit ein Fehlgriff
+  // rückgängig gemacht werden kann.
+  deletedAt    DateTime?
 }
 
 model Setting {

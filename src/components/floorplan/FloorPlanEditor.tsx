@@ -11,6 +11,9 @@ import { fetchJson } from "@/lib/client";
 import {
   clampOpeningToEdge,
   docBounds,
+  docLevels,
+  levelLabel,
+  roomLevel,
   insertVertex,
   openingMidpoints,
   openingWorldSegment,
@@ -83,6 +86,10 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [viewBox, setViewBox] = useState<[number, number, number, number] | null>(null);
+  const [activeLevel, setActiveLevel] = useState(0);
+  // Neu angelegte, noch leere Etagen: Sie stehen in keinem Raum, also müssen
+  // sie hier gemerkt werden — sonst verschwände der Reiter beim Umschalten.
+  const [extraLevels, setExtraLevels] = useState<number[]>([]);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<DragState>(null);
@@ -276,6 +283,7 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
         id,
         name: "Neuer Raum",
         type: "other",
+        level: activeLevel,
         polygon: rect(bounds.maxX + 60, bounds.minY, 300, 300),
         ceilingHeightCm: 250,
         confidence: 1,
@@ -403,6 +411,15 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
 
   // ------------------------------------------------------- Abgeleitetes
   const issues = useMemo(() => (doc ? validateFloorPlan(doc) : []), [doc]);
+  const levels = [...new Set([...(doc ? docLevels(doc) : [0]), ...extraLevels, activeLevel])].sort(
+    (a, b) => a - b,
+  );
+  const visibleRooms = doc ? doc.rooms.filter((room) => roomLevel(room) === activeLevel) : [];
+  const visibleRoomIds = new Set(visibleRooms.map((room) => room.id));
+  const visibleOpenings = doc
+    ? doc.openings.filter((opening) => visibleRoomIds.has(opening.wall.roomId))
+    : [];
+
   const activeRoom = doc ? doc.rooms.find((r) => r.id === activeRoomId(selection)) ?? null : null;
   const selectedRoom = activeRoom;
   const selectedVertex = selection?.kind === "vertex" ? selection : null;
@@ -436,6 +453,34 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
           <button className="btn-ghost" onClick={undo} title="Strg+Z">
             ↩ Rückgängig
           </button>
+          <div className="flex items-center gap-1" data-testid="level-tabs">
+            {levels.length > 1 &&
+              levels.map((level) => (
+                <button
+                  key={level}
+                  className={`chip px-2.5 py-1 text-xs ${level === activeLevel ? "chip-active" : ""}`}
+                  onClick={() => {
+                    setActiveLevel(level);
+                    setSelection(null);
+                  }}
+                >
+                  {levelLabel(level)}
+                </button>
+              ))}
+            <button
+              className="btn-ghost text-sm"
+              title="Eine Etage darüber anlegen"
+              onClick={() => {
+                const next = Math.max(...levels) + 1;
+                setExtraLevels((previous) => [...previous, next]);
+                setActiveLevel(next);
+                setSelection(null);
+              }}
+              data-testid="add-level"
+            >
+              + Etage
+            </button>
+          </div>
           <div className="ml-auto flex items-center gap-2">
             {meta && (
               <span className="badge">
@@ -473,7 +518,7 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
           />
 
           {/* Räume */}
-          {doc.rooms.map((room) => {
+          {visibleRooms.map((room) => {
             const isSelected = room.id === activeRoomId(selection);
             const centroid = polygonBounds([room.polygon]);
             const cx = (centroid.minX + centroid.maxX) / 2;
@@ -523,7 +568,7 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
           })}
 
           {/* Öffnungen */}
-          {doc.openings.map((opening) => {
+          {visibleOpenings.map((opening) => {
             const segment = openingWorldSegment(doc, opening);
             if (!segment) return null;
             const isSelected = selection?.kind === "opening" && selection.openingId === opening.id;
@@ -699,6 +744,27 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
             </div>
             <RoomSizeInputs room={selectedRoom} onResize={resizeRoomBBox} />
             <div>
+              <label className="label">Etage</label>
+              <select
+                className="input"
+                value={roomLevel(selectedRoom)}
+                onChange={(event) => {
+                  const level = Number(event.target.value);
+                  updateRoom(selectedRoom.id, { level });
+                  setActiveLevel(level);
+                }}
+                data-testid="room-level"
+              >
+                {[...new Set([...levels, roomLevel(selectedRoom), Math.max(...levels) + 1])]
+                  .sort((a, b) => a - b)
+                  .map((level) => (
+                    <option key={level} value={level}>
+                      {levelLabel(level)}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div>
               <label className="label">Deckenhöhe (cm)</label>
               <input
                 type="number"
@@ -858,6 +924,17 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
             >
               Öffnung löschen
             </button>
+          </div>
+        )}
+
+        {visibleRooms.length === 0 && (
+          <div className="card border-terra/40 bg-terra/5 text-sm leading-relaxed">
+            <p className="font-medium">{levelLabel(activeLevel)} ist noch leer.</p>
+            <p className="mt-1 text-ink-soft">
+              Lege mit <strong>+ Raum</strong> einen Raum an, oder wechsle über die
+              Etagen-Reiter zurück. Treppen werden nicht abgebildet — die Etagen stehen
+              nebeneinander, im 3D-Rundgang übereinander.
+            </p>
           </div>
         )}
 

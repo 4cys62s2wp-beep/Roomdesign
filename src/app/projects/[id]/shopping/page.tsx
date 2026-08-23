@@ -74,8 +74,11 @@ export default function ShoppingPage() {
           <a href={`/api/projects/${projectId}/shopping?format=csv`} className="btn-secondary" download>
             CSV exportieren
           </a>
+          <Link href={`/projects/${projectId}/export`} className="btn-secondary">
+            Konzept als PDF
+          </Link>
           <button className="btn-secondary" onClick={() => window.print()}>
-            Drucken / PDF
+            Liste drucken
           </button>
         </div>
       </div>

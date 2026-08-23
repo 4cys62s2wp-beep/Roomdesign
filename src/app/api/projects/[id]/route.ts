@@ -15,6 +15,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
             rooms: {
               include: {
                 proposals: {
+                  where: { deletedAt: null },
                   select: { id: true, title: true, isFavorite: true, totalCostEur: true, createdAt: true },
                   orderBy: { createdAt: "desc" },
                 },

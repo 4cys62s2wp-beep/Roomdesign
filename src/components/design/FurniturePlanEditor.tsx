@@ -35,7 +35,9 @@ export function FurniturePlanEditor({
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<{ id: string; grabDx: number; grabDy: number } | null>(null);
+  const historyRef = useRef<FurnitureItem[][]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
 
   const bounds = polygonBounds([room.polygon]);
   const margin = 50;
@@ -50,6 +52,22 @@ export function FurniturePlanEditor({
     if (!ctm) return [0, 0];
     const point = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
     return [point.x, point.y];
+  };
+
+  /** Zustand sichern, bevor er verändert wird. Beim Ziehen nur einmal je
+   *  Griff, damit ein Rückgängig nicht Pixel für Pixel zurückgeht. */
+  const remember = () => {
+    historyRef.current.push(furniture.map((item) => ({ ...item })));
+    if (historyRef.current.length > 50) historyRef.current.shift();
+    setCanUndo(true);
+  };
+
+  const undo = () => {
+    const previous = historyRef.current.pop();
+    if (!previous) return;
+    onChange(previous);
+    setCanUndo(historyRef.current.length > 0);
+    setSelectedId(null);
   };
 
   const updateItem = (id: string, patch: Partial<FurnitureItem>) => {
@@ -74,11 +92,13 @@ export function FurniturePlanEditor({
 
   const rotateSelected = () => {
     if (!selected) return;
+    remember();
     updateItem(selected.id, { rotationDeg: (selected.rotationDeg + 90) % 360 });
   };
 
   const removeSelected = () => {
     if (!selected) return;
+    remember();
     onChange(furniture.filter((item) => item.id !== selected.id));
     setSelectedId(null);
   };
@@ -141,6 +161,7 @@ export function FurniturePlanEditor({
               onPointerDown={(event) => {
                 event.stopPropagation();
                 setSelectedId(item.id);
+                remember();
                 const [wx, wy] = toWorld(event.clientX, event.clientY);
                 dragRef.current = { id: item.id, grabDx: wx - item.x, grabDy: wy - item.y };
                 svgRef.current?.setPointerCapture?.(event.pointerId);
@@ -205,15 +226,33 @@ export function FurniturePlanEditor({
           <button className="btn-secondary px-3 py-1.5 text-sm" onClick={rotateSelected} data-testid="rotate-furniture">
             ⟳ 90° drehen
           </button>
+          <button
+            className="btn-ghost text-sm"
+            onClick={undo}
+            disabled={!canUndo}
+            data-testid="undo-furniture"
+          >
+            ↩ Rückgängig
+          </button>
           <button className="btn-ghost text-sm text-terra-deep" onClick={removeSelected}>
             Entfernen
           </button>
         </div>
       ) : (
-        <p className="text-xs text-ink-soft">
-          Möbelstück antippen und ziehen. Ausgewählte Stücke lassen sich drehen oder entfernen;
-          alles rastet auf {SNAP_CM} cm und bleibt automatisch im Raum.
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="mr-auto text-xs text-ink-soft">
+            Möbelstück antippen und ziehen. Ausgewählte Stücke lassen sich drehen oder entfernen;
+            alles rastet auf {SNAP_CM} cm und bleibt automatisch im Raum.
+          </p>
+          <button
+            className="btn-ghost text-sm"
+            onClick={undo}
+            disabled={!canUndo}
+            data-testid="undo-furniture"
+          >
+            ↩ Rückgängig
+          </button>
+        </div>
       )}
     </div>
   );
