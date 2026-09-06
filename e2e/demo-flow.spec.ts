@@ -9,8 +9,8 @@ test("kompletter Demo-Durchlauf", async ({ page }) => {
   const projectName = `E2E Wohnung ${Date.now()}`;
   await page.getByTestId("new-project-name").fill(projectName);
   await page.getByTestId("new-project-submit").click();
-  await page.waitForURL(/\/projects\/[a-z0-9]+$/);
-  const projectUrl = page.url();
+  await page.waitForURL(/\/projects\/[a-z0-9]+\/assistant$/);
+  const projectUrl = page.url().replace(/\/assistant$/, "");
 
   // 2. Demo-Analyse starten
   await page.goto(`${projectUrl}/capture`);
@@ -57,8 +57,8 @@ test("Aufnahme-Anleitung ist vor der Aufnahme erreichbar", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("new-project-name").fill(`E2E Anleitung ${Date.now()}`);
   await page.getByTestId("new-project-submit").click();
-  await page.waitForURL(/\/projects\/[a-z0-9]+$/);
-  const projectUrl = page.url();
+  await page.waitForURL(/\/projects\/[a-z0-9]+\/assistant$/);
+  const projectUrl = page.url().replace(/\/assistant$/, "");
 
   // Beim ersten Besuch wird die Anleitung aktiv angeboten
   await page.goto(`${projectUrl}/capture`);
@@ -84,8 +84,8 @@ test("Raumform ändern und Möbel selbst anordnen", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("new-project-name").fill(`E2E Editoren ${Date.now()}`);
   await page.getByTestId("new-project-submit").click();
-  await page.waitForURL(/\/projects\/[a-z0-9]+$/);
-  const projectUrl = page.url();
+  await page.waitForURL(/\/projects\/[a-z0-9]+\/assistant$/);
+  const projectUrl = page.url().replace(/\/assistant$/, "");
 
   await page.goto(`${projectUrl}/capture`);
   await page.getByTestId("demo-analysis").click();
@@ -162,8 +162,8 @@ test("Umbenennen, Etage, Wiederherstellen und PDF-Export", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("new-project-name").fill(`E2E Extras ${Date.now()}`);
   await page.getByTestId("new-project-submit").click();
-  await page.waitForURL(/\/projects\/[a-z0-9]+$/);
-  const projectUrl = page.url();
+  await page.waitForURL(/\/projects\/[a-z0-9]+\/assistant$/);
+  const projectUrl = page.url().replace(/\/assistant$/, "");
 
   await page.goto(`${projectUrl}/capture`);
   await page.getByTestId("demo-analysis").click();

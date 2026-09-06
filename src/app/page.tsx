@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { fetchJson } from "@/lib/client";
 import { fmtDate } from "@/lib/format";
+import { JourneyOverview } from "@/components/journey/JourneyOverview";
 
 interface ProjectListItem {
   id: string;
@@ -17,6 +18,8 @@ interface ProjectListItem {
   videoCount: number;
   hasFloorPlan: boolean;
   latestJob: { id: string; type: string; status: string } | null;
+  nextStep: string;
+  journeyCompletion: number;
 }
 
 export default function DashboardPage() {
@@ -48,7 +51,8 @@ export default function DashboardPage() {
         method: "POST",
         body: JSON.stringify({ name }),
       });
-      router.push(`/projects/${project.id}`);
+      // Direkt in den Leitfaden: Der sagt, was als Erstes zu tun ist
+      router.push(`/projects/${project.id}/assistant`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setCreating(false);
@@ -91,6 +95,9 @@ export default function DashboardPage() {
         {error && <p className="mt-3 text-sm text-terra-deep">{error}</p>}
       </section>
 
+      {/* Wer noch kein Projekt hat, soll zuerst sehen, was ihn erwartet */}
+      {projects !== null && projects.length === 0 && <JourneyOverview />}
+
       <section>
         <h2 className="mb-3 font-display text-xl font-semibold">Projekte</h2>
         {projects === null ? (
@@ -122,6 +129,17 @@ export default function DashboardPage() {
                   </div>
                   {project.address && <p className="text-xs text-ink-soft">{project.address}</p>}
                 </div>
+                <div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-terra-deep" data-testid="project-next-step">
+                      {project.nextStep}
+                    </span>
+                    <span className="text-ink-soft">{Math.round(project.journeyCompletion * 100)} %</span>
+                  </div>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-sand">
+                    <div className="h-full rounded-full bg-sage" style={{ width: `${Math.max(3, project.journeyCompletion * 100)}%` }} />
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   <span className="badge">{project.roomCount} Räume</span>
                   <span className="badge">{project.videoCount} Videos</span>
@@ -136,6 +154,8 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      {projects !== null && projects.length > 0 && <JourneyOverview />}
     </div>
   );
 }

@@ -115,16 +115,64 @@ export function resolveMove(
   return from;
 }
 
-/** Sinnvoller Startpunkt: Mittelpunkt des größten begehbaren Raums. */
-export function walkStartPoint(doc: FloorPlanDoc): Vec2 | null {
+export interface WalkStart {
+  point: Vec2;
+  /** Blickrichtung als Einheitsvektor (Grundriss-Koordinaten). */
+  facing: Vec2;
+}
+
+/**
+ * Wo der Rundgang beginnt: einen Schritt hinter der Wohnungstür, mit Blick in
+ * die Wohnung — so, wie man sie beim Hereinkommen sieht.
+ *
+ * Die Wohnungstür ist eine Tür an einer Außenwand (ohne zweiten Raum),
+ * bevorzugt an einem Flur. Gibt es keine, geht es in der Mitte des ersten
+ * begehbaren Raums los.
+ */
+export function walkStart(doc: FloorPlanDoc): WalkStart | null {
+  const frontDoors = doc.openings
+    .filter((opening) => opening.kind === "door" && !opening.roomB)
+    .sort((a, b) => hallwayFirst(doc, a.wall.roomId) - hallwayFirst(doc, b.wall.roomId));
+
+  for (const door of frontDoors) {
+    const segment = openingWorldSegment(doc, door);
+    const room = doc.rooms.find((candidate) => candidate.id === door.wall.roomId);
+    if (!segment || !room) continue;
+
+    const mid: Vec2 = [(segment.a[0] + segment.b[0]) / 2, (segment.a[1] + segment.b[1]) / 2];
+    const dx = segment.b[0] - segment.a[0];
+    const dy = segment.b[1] - segment.a[1];
+    const length = Math.hypot(dx, dy) || 1;
+    // Wandnormale — und zwar die, die ins Rauminnere zeigt
+    let inward: Vec2 = [-dy / length, dx / length];
+    const center = roomCenter(room.polygon);
+    if (inward[0] * (center[0] - mid[0]) + inward[1] * (center[1] - mid[1]) < 0) {
+      inward = [-inward[0], -inward[1]];
+    }
+    for (const distance of [90, 65, 45]) {
+      const point: Vec2 = [mid[0] + inward[0] * distance, mid[1] + inward[1] * distance];
+      if (isWalkable(doc, point)) return { point, facing: inward };
+    }
+  }
+
   for (const room of doc.rooms) {
-    const xs = room.polygon.map((p) => p[0]);
-    const ys = room.polygon.map((p) => p[1]);
-    const center: Vec2 = [
-      (Math.min(...xs) + Math.max(...xs)) / 2,
-      (Math.min(...ys) + Math.max(...ys)) / 2,
-    ];
-    if (isWalkable(doc, center)) return center;
+    const center = roomCenter(room.polygon);
+    if (isWalkable(doc, center)) return { point: center, facing: [0, -1] };
   }
   return null;
+}
+
+/** Nur der Punkt — für Aufrufer, denen die Blickrichtung egal ist. */
+export function walkStartPoint(doc: FloorPlanDoc): Vec2 | null {
+  return walkStart(doc)?.point ?? null;
+}
+
+function hallwayFirst(doc: FloorPlanDoc, roomId: string): number {
+  return doc.rooms.find((room) => room.id === roomId)?.type === "hallway" ? 0 : 1;
+}
+
+function roomCenter(polygon: Vec2[]): Vec2 {
+  const xs = polygon.map((p) => p[0]);
+  const ys = polygon.map((p) => p[1]);
+  return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
 }

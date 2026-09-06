@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { BODY_RADIUS_CM, isWalkable, resolveMove, walkStartPoint } from "@/lib/geometry/walk";
+import { BODY_RADIUS_CM, isWalkable, resolveMove, walkStart, walkStartPoint } from "@/lib/geometry/walk";
 import { demoFloorPlan } from "@/lib/demo/fixtures";
-import { openingWorldSegment, polygonBounds } from "@/lib/geometry/floorplan";
+import { openingWorldSegment, pointInPolygon, polygonBounds } from "@/lib/geometry/floorplan";
 import type { Vec2 } from "@/lib/types";
 
 const doc = demoFloorPlan();
@@ -96,5 +96,34 @@ describe("Bewegung auflösen", () => {
     const start = walkStartPoint(doc)!;
     expect(start).not.toBeNull();
     expect(isWalkable(doc, start)).toBe(true);
+  });
+});
+
+describe("Startpunkt des Rundgangs", () => {
+  it("beginnt hinter der Wohnungstür mit Blick in den Gang", () => {
+    const start = walkStart(doc)!;
+    expect(start).not.toBeNull();
+    const front = doc.openings.find((o) => o.id === "tuer-eingang")!;
+    const segment = openingWorldSegment(doc, front)!;
+    const doorMid: Vec2 = [(segment.a[0] + segment.b[0]) / 2, (segment.a[1] + segment.b[1]) / 2];
+    // Nah an der Tür …
+    const distance = Math.hypot(start.point[0] - doorMid[0], start.point[1] - doorMid[1]);
+    expect(distance).toBeGreaterThan(30);
+    expect(distance).toBeLessThan(120);
+    // … innerhalb des Gangs …
+    const gang = doc.rooms.find((r) => r.id === "gang")!;
+    expect(pointInPolygon(start.point, gang.polygon)).toBe(true);
+    expect(isWalkable(doc, start.point)).toBe(true);
+    // … und die Blickrichtung zeigt von der Tür weg in den Raum
+    const away: Vec2 = [start.point[0] - doorMid[0], start.point[1] - doorMid[1]];
+    expect(start.facing[0] * away[0] + start.facing[1] * away[1]).toBeGreaterThan(0);
+    expect(Math.hypot(start.facing[0], start.facing[1])).toBeCloseTo(1, 5);
+  });
+
+  it("fällt ohne Wohnungstür auf eine begehbare Raummitte zurück", () => {
+    const withoutFrontDoor = { ...doc, openings: doc.openings.filter((o) => o.id !== "tuer-eingang") };
+    const start = walkStart(withoutFrontDoor)!;
+    expect(start).not.toBeNull();
+    expect(isWalkable(withoutFrontDoor, start.point)).toBe(true);
   });
 });

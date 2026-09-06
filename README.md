@@ -4,13 +4,14 @@
 
 ## Funktionen
 
+- **Leitfaden (Assistent):** Sechs Phasen — Vorbereiten, Aufnehmen, Analysieren, Grundriss prüfen, Einrichten, Erleben & Einkaufen — mit animierten Illustrationen, Gerätehinweis (Mac oder Handy), Zeitbedarf und konkreten Unterschritten in der richtigen Reihenfolge. Die App erkennt am Projektstand, was gerade dran ist (Video da? Räume bestätigt? Favoriten gesetzt?), führt mit einem Knopf an die richtige Stelle und zeigt einen QR-Code, mit dem das Handy die Aufnahme-Seite öffnet. Haken werden am Projekt gespeichert, damit Mac und Handy denselben Stand zeigen.
 - **Verbindliche Aufnahme-Anleitung** — ein fester Standard für jeden Rundgang (Objektiv 1×, 1080p/30 fps, Querformat, Brusthöhe, ein Schritt pro Sekunde, 20 Sekunden je Umdrehung, 2–4 Minuten Gesamtlänge). Damit werden zwei Aufnahmen vergleichbar und die Maßschätzung verlässlich.
 - **Video-Aufnahme direkt im Browser** (PWA, Handy-Kamera) oder Video-Upload. Während des Rundgangs kannst du antippen, in welchem Raum du gerade bist (Raum-Tagging); die App führt dich dann pro Raum durch den immer gleichen Dreischritt und warnt, wenn das Video zu lang wird.
 - **Datensparsam:** Das Video verlässt das Gerät nicht — im Browser werden ~28 Standbilder extrahiert und nur diese hochgeladen.
 - **KI-Analyse (Claude):** erkennt Räume, schätzt Maße über Referenzobjekte (Türhöhe ≈ 200 cm), verortet Türen/Fenster/Durchgänge und baut per Auto-Layout einen Grundriss. Alle Werte sind als Schätzungen markiert.
 - **Grundriss-Editor (SVG):** Räume verschieben, Ecken ziehen, **Ecken einfügen und entfernen für L-förmige Räume** (Türen und Fenster wandern automatisch mit), Maße numerisch korrigieren, Türen/Fenster anlegen und verschieben, Undo, Zoom/Pan, Versionierung. **Mehrere Etagen:** Jeder Raum bekommt eine Etage, Reiter blenden je Geschoss ein. KI-Schätzungen sind gestrichelt markiert, bis du sie bestätigst.
 - **Design-Studio pro Raum:** Stil-Presets (Japandi, Skandinavisch, Industrial, …), Freitext-Wünsche, Budget. Die KI liefert strukturierte Vorschläge: Konzept, Farbpalette, Materialien, Möbel mit echten Maßen + Platzierung, Lichtplan, Tipps, Preise. Vorschläge vergleichen, favorisieren und mit Feedback überarbeiten („mehr Holz, weniger Deko“). **Möbel lassen sich anschließend selbst verschieben, drehen und entfernen** — mit Rückgängig-Knopf, serverseitiger Prüfung und Neuberechnung des Budgets. Gelöschte Vorschläge lassen sich sofort wiederherstellen.
-- **3D-Rundgang (Three.js):** Die Wohnung wird aus dem Grundriss gebaut (Wände mit echten Öffnungen, Fensterglas) und mit prozeduralen Möbelmodellen in Originalgröße eingerichtet — Orbit-Ansicht und Ego-Modus (WASD) **mit Wandkollision** — Türen und Durchgänge lassen sich passieren, Wände halten. Mehrere Etagen werden übereinander gestapelt. Keine Bild-KI-Kosten.
+- **3D-Rundgang (Three.js):** Die Wohnung wird aus dem Grundriss gebaut (Wände mit echten Öffnungen, Fensterglas) und mit prozeduralen Möbelmodellen in Originalgröße eingerichtet — Orbit-Ansicht und Ego-Modus **mit Wandkollision** — Türen und Durchgänge lassen sich passieren, Wände halten. Am Rechner mit WASD und Maus, am Handy mit Joystick und Wischgeste. Der Rundgang beginnt hinter der Wohnungstür mit Blick in die Wohnung. Mehrere Etagen werden übereinander gestapelt. Keine Bild-KI-Kosten.
 - **Einkaufsliste & Budget:** aggregiert die favorisierten Vorschläge, CSV-Export, Druck-/PDF-Ansicht.
 - **Designkonzept als PDF:** ein druckfertiges Dokument mit Deckblatt, Grundriss je Etage, einem Kapitel pro Raum (Vorschau, Palette, Materialien, Konzepttext, Möbel- und Lichtliste, Tipps) und der Budgetübersicht — über den Druckdialog des Browsers als PDF sicherbar.
 - **Demo-Modus:** Ohne API-Key läuft die komplette App mit einer realistischen Beispielwohnung — ideal zum Ausprobieren.
@@ -23,7 +24,7 @@ npm run setup      # Prisma-Client generieren + SQLite-Datenbank anlegen
 npm run dev        # http://localhost:3000
 ```
 
-Ohne weitere Konfiguration startet die App im **Demo-Modus**.
+Ohne weitere Konfiguration startet die App im **Demo-Modus**. Nach dem Anlegen eines Projekts landest du im **Leitfaden** — der sagt dir Schritt für Schritt, was als Nächstes zu tun ist und auf welchem Gerät.
 
 ### Vom Handy aus nutzen
 
@@ -61,8 +62,8 @@ Kosten entstehen pro Analyse (bis zu 32 Bilder) und pro Designvorschlag (reiner 
 | `npm run dev:https` | Entwicklungsserver mit HTTPS — Zertifikat für `localhost` und die Netzwerk-Adressen des Rechners, nötig für die Kamera-Aufnahme auf dem Handy |
 | `npm run build` / `npm start` | Production-Build / -Server |
 | `npm run setup` | Prisma generate + DB anlegen (`data/app.db`) |
-| `npm run test` | Unit-Tests (Vitest): Geometrie, Wände, Raumform, Begehbarkeit, Etagen, Fixtures, Layout, Möbel-Fit, CSV |
-| `npm run e2e` | End-to-End-Tests (Playwright): Demo-Durchlauf, Aufnahme-Anleitung, Raumform & Möbel anordnen, Umbenennen/Etage/Wiederherstellen/PDF |
+| `npm run test` | Unit-Tests (Vitest): Geometrie, Wände, Raumform, Begehbarkeit, Etagen, Leitfaden, Fixtures, Layout, Möbel-Fit, CSV |
+| `npm run e2e` | End-to-End-Tests (Playwright): Demo-Durchlauf, Aufnahme-Anleitung, Raumform & Möbel anordnen, Umbenennen/Etage/Wiederherstellen/PDF, Leitfaden über den ganzen Ablauf, Handy-Format (Leitfaden + 3D-Joystick) |
 
 ## Architektur
 
@@ -79,6 +80,8 @@ Design-Studio                     └─ DemoProvider   (deterministische Fixtur
                                    Auto-Layout, Möbel-Plausibilisierung)
                                 Prisma + SQLite (data/app.db)
 ```
+
+Der **Leitfaden** (`src/lib/journey.ts`) ist die eine Quelle für Phasen, Unterschritte und die Frage „Was ist jetzt dran?“ — abgeleitet aus dem Projektstand, ohne eigene Zustandsmaschine. Assistent, Projektkarte und Startseite lesen alle von dort. Die Illustrationen (`src/components/journey/Illustrations.tsx`) sind reine SVGs mit CSS-Keyframes; bei „Bewegung reduzieren“ zeigen sie den Endzustand.
 
 Zentrales Datenmodell ist das `FloorPlanDoc` (`src/lib/types.ts`): Räume als Polygone (cm), Öffnungen an Wandkanten — dieselbe Quelle für den 2D-Editor **und** den 3D-Renderer. Designvorschläge (`ProposalDoc`) enthalten Möbel mit Platzierungskoordinaten, die serverseitig in den Raum „geklemmt“ und auf Türkollisionen geprüft werden (`furniture-fit.ts`).
 

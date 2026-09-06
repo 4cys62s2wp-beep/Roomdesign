@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { ProjectNav } from "@/components/ProjectNav";
 
 export const metadata: Metadata = {
   title: {
@@ -35,14 +36,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <path d="M10 21v-6h4v6" />
                 </svg>
               </span>
-              <span className="font-display text-lg font-semibold tracking-tight">Roomdesign</span>
+              {/* Der Schriftzug weicht am Handy den Links — dort zählt jeder Pixel Breite */}
+              <span className="hidden font-display text-lg font-semibold tracking-tight sm:inline">
+                Roomdesign
+              </span>
             </Link>
-            <nav className="flex items-center gap-1.5">
-              <Link href="/" className="btn-ghost">
+            <nav className="flex items-center gap-0.5 sm:gap-1.5">
+              <ProjectNav />
+              <Link href="/" className="btn-ghost px-2 sm:px-2.5">
                 Projekte
               </Link>
-              <Link href="/settings" className="btn-ghost">
-                Einstellungen
+              <Link href="/settings" className="btn-ghost px-2 sm:px-2.5" aria-label="Einstellungen">
+                {/* Am Handy nur das Symbol — mit ausgeschriebenem Wort passt die Zeile nicht */}
+                <svg viewBox="0 0 24 24" className="h-4 w-4 sm:hidden" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                  <path d="M4 6h16M4 12h16M4 18h16" />
+                  <circle cx="9" cy="6" r="2" fill="currentColor" stroke="none" />
+                  <circle cx="15" cy="12" r="2" fill="currentColor" stroke="none" />
+                  <circle cx="7" cy="18" r="2" fill="currentColor" stroke="none" />
+                </svg>
+                <span className="hidden sm:inline">Einstellungen</span>
               </Link>
             </nav>
           </div>

@@ -12,6 +12,9 @@ model Project {
   name        String
   address     String?
   globalStyle String?
+  // Vom Nutzer abgehakte Schritte des Leitfadens (JSON), damit Mac und Handy
+  // denselben Stand zeigen.
+  journeyChecks String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   videos      VideoAsset[]

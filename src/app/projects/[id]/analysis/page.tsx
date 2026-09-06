@@ -107,8 +107,8 @@ function AnalysisContent() {
             <Link href={`/projects/${projectId}/floorplan`} className="btn-terra" data-testid="to-floorplan">
               Grundriss prüfen & anpassen
             </Link>
-            <Link href={`/projects/${projectId}`} className="btn-secondary">
-              Zur Projektübersicht
+            <Link href={`/projects/${projectId}/assistant`} className="btn-secondary">
+              Weiter im Leitfaden
             </Link>
           </div>
         </>
