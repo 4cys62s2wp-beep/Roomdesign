@@ -88,3 +88,612 @@ body {
     break-inside: avoid;
   }
 }
+
+/* ------------------------------------------------------------------
+   Leitfaden-Animationen (src/components/journey/Illustrations.tsx)
+
+   Regel: Der Ruhezustand jedes Elements ist der Endzustand seiner
+   Animation. Die Keyframes beginnen beim Anfangszustand — so zeigt
+   „Bewegung reduzieren“ ein fertiges Bild statt eines abgeschnittenen.
+
+   Zeitliche Staffelung über --t: Ein Element mit --t: 2s erscheint zwei
+   Sekunden nach Beginn des Durchlaufs, dessen Länge --jn-cycle am SVG
+   festlegt. Negative Verzögerung, damit vor dem Einsatz nicht kurz der
+   Endzustand aufblitzt.
+   ------------------------------------------------------------------ */
+.jn-anim {
+  --jn-cycle: 8s;
+  --t: 0s;
+}
+.jn-anim [class*="jn-"] {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.jn-motion-static {
+  display: none;
+}
+
+/* Allgemeine Einsätze --------------------------------------------- */
+.jn-pop {
+  animation: jn-pop var(--jn-cycle) ease-out infinite;
+  animation-delay: calc(var(--t) - var(--jn-cycle));
+}
+@keyframes jn-pop {
+  0%,
+  1% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  6% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  9%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.jn-slide,
+.jn-furn {
+  animation: jn-slide var(--jn-cycle) cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+  animation-delay: calc(var(--t) - var(--jn-cycle));
+}
+@keyframes jn-slide {
+  0%,
+  1% {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  8%,
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.jn-grow {
+  transform-origin: left;
+  animation: jn-grow var(--jn-cycle) ease-out infinite;
+  animation-delay: calc(var(--t) - var(--jn-cycle));
+}
+@keyframes jn-grow {
+  0%,
+  1% {
+    transform: scaleX(0);
+  }
+  6%,
+  100% {
+    transform: scaleX(1);
+  }
+}
+.jn-late {
+  animation: jn-late var(--jn-cycle) ease-out infinite;
+}
+@keyframes jn-late {
+  0%,
+  72% {
+    opacity: 0;
+  }
+  85%,
+  100% {
+    opacity: 1;
+  }
+}
+.jn-blink {
+  animation: jn-blink 1.2s steps(1) infinite;
+}
+@keyframes jn-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
+/* 1 · Vorbereiten -------------------------------------------------- */
+.jn-glow-ring {
+  opacity: 0.16;
+  animation: jn-glow 2.6s ease-in-out infinite;
+}
+.jn-delay-1 {
+  animation-delay: -1.3s;
+}
+@keyframes jn-glow {
+  0%,
+  100% {
+    opacity: 0.08;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.05);
+  }
+}
+.jn-bulb {
+  animation: jn-bulb 2.6s ease-in-out infinite;
+}
+@keyframes jn-bulb {
+  0%,
+  100% {
+    filter: brightness(0.92);
+  }
+  50% {
+    filter: brightness(1.12);
+  }
+}
+.jn-blind {
+  transform-origin: top;
+  transform: scaleY(0.12);
+  animation: jn-blind var(--jn-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes jn-blind {
+  0%,
+  14% {
+    transform: scaleY(1);
+  }
+  42%,
+  100% {
+    transform: scaleY(0.12);
+  }
+}
+.jn-phone {
+  transform: rotate(-90deg);
+  animation: jn-phone var(--jn-cycle) cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes jn-phone {
+  0%,
+  22% {
+    transform: rotate(0deg);
+  }
+  46%,
+  100% {
+    transform: rotate(-90deg);
+  }
+}
+.jn-phone-ui {
+  animation: jn-phone-ui var(--jn-cycle) ease-out infinite;
+}
+@keyframes jn-phone-ui {
+  0%,
+  50% {
+    opacity: 0;
+  }
+  62%,
+  100% {
+    opacity: 1;
+  }
+}
+.jn-toggle {
+  transform: translateX(-10px);
+  animation: jn-toggle var(--jn-cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes jn-toggle {
+  0%,
+  74% {
+    transform: translateX(0);
+  }
+  82%,
+  100% {
+    transform: translateX(-10px);
+  }
+}
+
+/* 2 · Aufnehmen ---------------------------------------------------- */
+.jn-timebar {
+  transform-origin: left;
+  animation: jn-timebar var(--jn-cycle) linear infinite;
+}
+@keyframes jn-timebar {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+/* 3 · Analysieren -------------------------------------------------- */
+.jn-frame {
+  animation: jn-frame var(--jn-cycle) ease-in-out infinite;
+  animation-delay: calc(var(--t) - var(--jn-cycle));
+}
+@keyframes jn-frame {
+  0% {
+    transform: translateX(-34px);
+    opacity: 0;
+  }
+  10%,
+  30% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  46% {
+    transform: translateX(74px);
+    opacity: 1;
+  }
+  52%,
+  100% {
+    transform: translateX(74px);
+    opacity: 0;
+  }
+}
+.jn-scan {
+  animation: jn-scan 2.2s ease-in-out infinite alternate;
+}
+@keyframes jn-scan {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(94px);
+  }
+}
+.jn-draw {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  animation: jn-draw var(--jn-cycle) ease-in-out infinite;
+  animation-delay: calc(var(--t) - var(--jn-cycle));
+}
+.jn-draw-1 {
+  --t: 1.4s;
+}
+.jn-draw-2 {
+  --t: 2.6s;
+}
+.jn-draw-3 {
+  --t: 3.8s;
+}
+@keyframes jn-draw {
+  0%,
+  1% {
+    stroke-dashoffset: 100;
+  }
+  16%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+.jn-progress {
+  transform-origin: left;
+  animation: jn-timebar var(--jn-cycle) linear infinite;
+}
+
+/* 4 · Grundriss prüfen --------------------------------------------- */
+.jn-room-dashed {
+  width: 148px;
+  opacity: 0;
+  animation: jn-room-dashed var(--jn-cycle) ease-in-out infinite;
+}
+@keyframes jn-room-dashed {
+  0%,
+  28% {
+    width: 124px;
+    opacity: 1;
+  }
+  48%,
+  70% {
+    width: 148px;
+    opacity: 1;
+  }
+  80%,
+  100% {
+    width: 148px;
+    opacity: 0;
+  }
+}
+.jn-room-solid {
+  width: 148px;
+  animation: jn-room-solid var(--jn-cycle) ease-in-out infinite;
+}
+@keyframes jn-room-solid {
+  0%,
+  70% {
+    opacity: 0;
+  }
+  80%,
+  100% {
+    opacity: 1;
+  }
+}
+.jn-dim-line {
+  width: 148px;
+  animation: jn-dim-line var(--jn-cycle) ease-in-out infinite;
+}
+@keyframes jn-dim-line {
+  0%,
+  28% {
+    width: 124px;
+  }
+  48%,
+  100% {
+    width: 148px;
+  }
+}
+.jn-wall-shift {
+  transform: translateX(148px);
+  animation: jn-wall-shift var(--jn-cycle) ease-in-out infinite;
+}
+@keyframes jn-wall-shift {
+  0%,
+  28% {
+    transform: translateX(124px);
+  }
+  48%,
+  100% {
+    transform: translateX(148px);
+  }
+}
+.jn-arrow {
+  opacity: 0;
+  animation: jn-arrow var(--jn-cycle) ease-in-out infinite;
+}
+@keyframes jn-arrow {
+  0%,
+  12% {
+    opacity: 0;
+  }
+  18%,
+  44% {
+    opacity: 1;
+  }
+  52%,
+  100% {
+    opacity: 0;
+  }
+}
+.jn-dim-a {
+  opacity: 0;
+  animation: jn-dim-a var(--jn-cycle) ease-in-out infinite;
+}
+@keyframes jn-dim-a {
+  0%,
+  36% {
+    opacity: 1;
+  }
+  46%,
+  100% {
+    opacity: 0;
+  }
+}
+.jn-dim-b {
+  animation: jn-dim-b var(--jn-cycle) ease-in-out infinite;
+}
+@keyframes jn-dim-b {
+  0%,
+  40% {
+    opacity: 0;
+  }
+  50%,
+  100% {
+    opacity: 1;
+  }
+}
+.jn-ruler {
+  opacity: 0;
+  animation: jn-ruler var(--jn-cycle) ease-in-out infinite;
+}
+@keyframes jn-ruler {
+  0%,
+  4% {
+    opacity: 0;
+  }
+  10%,
+  40% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+.jn-check {
+  animation: jn-check var(--jn-cycle) ease-out infinite;
+}
+@keyframes jn-check {
+  0%,
+  78% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  86% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  90%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 5 · Einrichten --------------------------------------------------- */
+.jn-wall-tint {
+  animation: jn-wall-tint var(--jn-cycle) ease-in-out infinite;
+}
+@keyframes jn-wall-tint {
+  0%,
+  8% {
+    opacity: 0;
+  }
+  18%,
+  100% {
+    opacity: 0.35;
+  }
+}
+
+/* Bewegung reduzieren: alles steht im Endzustand ------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .jn-anim,
+  .jn-anim * {
+    animation: none !important;
+  }
+  .jn-anim .jn-motion {
+    display: none;
+  }
+  .jn-anim .jn-motion-static {
+    display: inline;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Leitfaden-Oberfläche: Stepper, Haken, Karten-Einblendung
+   ------------------------------------------------------------------ */
+.jn-stepper {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(150px, 1fr);
+  gap: 6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 1024px) {
+  .jn-stepper {
+    grid-auto-columns: 1fr;
+    overflow: visible;
+  }
+}
+.jn-step {
+  display: flex;
+  width: 100%;
+  cursor: pointer;
+  scroll-snap-align: start;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--color-line);
+  background: #fff;
+  padding: 10px 12px;
+  text-align: left;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s,
+    transform 0.2s;
+}
+.jn-step:hover {
+  border-color: color-mix(in srgb, var(--color-terra) 50%, transparent);
+}
+.jn-step-selected {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px -10px rgba(38, 35, 29, 0.35);
+}
+.jn-step-num {
+  display: inline-flex;
+  height: 26px;
+  width: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--color-sand);
+  color: var(--color-ink-soft);
+}
+.jn-step-done .jn-step-num {
+  background: var(--color-sage);
+  color: #fff;
+}
+.jn-step-current {
+  border-color: color-mix(in srgb, var(--color-terra) 55%, transparent);
+  background: color-mix(in srgb, var(--color-terra) 6%, #fff);
+}
+.jn-step-current .jn-step-num {
+  background: var(--color-terra);
+  color: #fff;
+  animation: jn-ring 2.2s ease-out infinite;
+}
+@keyframes jn-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-terra) 45%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+.jn-step-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-ink);
+}
+.jn-step-upcoming .jn-step-title {
+  color: var(--color-ink-soft);
+}
+.jn-step-device {
+  font-size: 11px;
+  color: var(--color-ink-soft);
+}
+
+.jn-check-btn {
+  display: inline-flex;
+  height: 30px;
+  width: 30px;
+  flex: none;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-line);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    transform 0.15s;
+}
+.jn-check-btn:not(:disabled):hover {
+  border-color: var(--color-sage);
+  transform: scale(1.06);
+}
+.jn-check-btn-done {
+  background: var(--color-sage);
+  border-color: var(--color-sage);
+  color: #fff;
+}
+.jn-check-btn-sm {
+  height: 22px;
+  width: 22px;
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+.jn-card-in {
+  animation: jn-card-in 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes jn-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.jn-pulse {
+  animation: jn-pulse 1.8s ease-in-out infinite;
+}
+@keyframes jn-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jn-card-in,
+  .jn-pulse,
+  .jn-step-current .jn-step-num {
+    animation: none;
+  }
+}

@@ -43,3 +43,10 @@ export async function getProvider(): Promise<AiProvider> {
     DEFAULT_CLAUDE_MODEL;
   return new ClaudeProvider(apiKey, model);
 }
+
+/** Welcher Provider gerade aktiv ist — ohne ihn zu instanziieren. */
+export async function activeProviderName(): Promise<"demo" | "claude"> {
+  const forceDemo = (await getSetting(SETTING_KEYS.forceDemoMode)) === "true";
+  if (forceDemo) return "demo";
+  return (await resolveApiKey()) ? "claude" : "demo";
+}

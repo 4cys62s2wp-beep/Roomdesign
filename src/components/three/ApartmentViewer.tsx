@@ -2,9 +2,10 @@
 
 // 3D-Viewer: baut die Wohnung aus dem FloorPlanDoc (Böden, Wände mit
 // Öffnungen, Fensterglas) und möbliert sie mit dem gewählten Vorschlag je
-// Raum. Orbit-Ansicht und Ego-Rundgang (WASD + Maus).
+// Raum. Orbit-Ansicht und Ego-Rundgang — am Rechner mit WASD und Maus, am
+// Handy mit Joystick und Wischgeste.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, PointerLockControls } from "@react-three/drei";
@@ -19,7 +20,7 @@ import {
   openingWorldSegment,
 } from "@/lib/geometry/floorplan";
 import type { FloorPlanDoc, ProposalDoc, Vec2 } from "@/lib/types";
-import { resolveMove, walkStartPoint } from "@/lib/geometry/walk";
+import { resolveMove, walkStart } from "@/lib/geometry/walk";
 import { Furniture } from "@/components/three/furniture";
 
 interface FloorPlanResponse {
@@ -50,6 +51,8 @@ export function ApartmentViewer({
   const [mode, setMode] = useState<"orbit" | "walk">("orbit");
   const [walkLevel, setWalkLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const touch = useCoarsePointer();
+  const touchInput = useRef<TouchInput>({ move: [0, 0], look: [0, 0] });
 
   useEffect(() => {
     let cancelled = false;
@@ -113,7 +116,7 @@ export function ApartmentViewer({
       <div className="card relative overflow-hidden p-0">
         <Canvas
           camera={{ position: [center[0], size * 0.9 + 3, center[2] + size * 0.75], fov: 50 }}
-          className="h-[560px]! w-full touch-none"
+          className="h-[min(560px,70svh)]! w-full touch-none"
           data-testid="canvas3d"
         >
           <color attach="background" args={["#EDE8DB"]} />
@@ -136,12 +139,22 @@ export function ApartmentViewer({
               doc={docForLevel(plan.data, walkLevel)}
               baseHeightM={levelBaseCm(plan.data, walkLevel) / 100}
               fallbackStart={[center[0], center[2]]}
+              touch={touch}
+              input={touchInput}
             />
           )}
         </Canvas>
+        {mode === "walk" && touch && <TouchWalkOverlay input={touchInput} />}
         {mode === "walk" && (
-          <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-xs text-white">
-            Klicken zum Umsehen · WASD/Pfeiltasten zum Gehen · Wände halten · ESC beendet
+          <div
+            className={`pointer-events-none absolute left-1/2 max-w-[90%] -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-center text-xs text-white ${
+              // Am Handy sitzt unten links der Joystick — der Hinweis weicht nach oben aus
+              touch ? "top-3" : "bottom-3"
+            }`}
+          >
+            {touch
+              ? "Joystick: gehen · Wischen: umsehen · Wände halten"
+              : "Klicken zum Umsehen · WASD/Pfeiltasten zum Gehen · Wände halten · ESC beendet"}
           </div>
         )}
       </div>
@@ -353,25 +366,67 @@ function hashString(value: string): number {
 const EYE_HEIGHT_M = 1.55;
 /** Gehgeschwindigkeit (m/s). */
 const WALK_SPEED_MS = 2.2;
+/** Wie stark ein Wisch die Blickrichtung dreht (rad je Pixel). */
+const LOOK_SENSITIVITY = 0.0045;
+/** Wie weit sich der Joystick-Knopf bewegen lässt (px). */
+const JOYSTICK_RADIUS = 42;
+
+/** Eingaben von Joystick und Wischgeste — außerhalb der Canvas erzeugt, im Frame gelesen. */
+interface TouchInput {
+  /** Joystick: x nach rechts, y nach vorn, jeweils -1..1 */
+  move: [number, number];
+  /** Aufgelaufene Wischbewegung seit dem letzten Frame (px) */
+  look: [number, number];
+}
+
+/**
+ * Finger statt Maus? Dann Joystick statt Tastatur.
+ *
+ * Die Medienabfrage allein reicht nicht: Manche Browser (und die
+ * Touch-Emulation in Tests) melden trotz Touchscreen keinen groben Zeiger,
+ * die Anzahl der Berührungspunkte stimmt aber.
+ */
+function useCoarsePointer(): boolean {
+  const [coarse, setCoarse] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(pointer: coarse)");
+    const detect = () => setCoarse(query.matches || navigator.maxTouchPoints > 0);
+    detect();
+    query.addEventListener("change", detect);
+    return () => query.removeEventListener("change", detect);
+  }, []);
+  return coarse;
+}
 
 function WalkControls({
   doc,
   baseHeightM,
   fallbackStart,
+  touch,
+  input,
 }: {
   doc: FloorPlanDoc;
   baseHeightM: number;
   fallbackStart: [number, number];
+  touch: boolean;
+  input: MutableRefObject<TouchInput>;
 }) {
   const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
+  const yaw = useRef(0);
+  const pitch = useRef(0);
 
   useEffect(() => {
-    // In einem begehbaren Raum starten, nicht zwangsläufig in der Mitte der
-    // Bounding-Box — die kann bei verwinkelten Wohnungen in einer Wand liegen.
-    const start = walkStartPoint(doc);
-    const point = start ?? [fallbackStart[0] * 100, fallbackStart[1] * 100];
+    // Hinter der Wohnungstür anfangen, mit Blick hinein — nicht irgendwo in
+    // der Mitte, wo womöglich gerade das Bett steht.
+    const start = walkStart(doc);
+    const point = start?.point ?? [fallbackStart[0] * 100, fallbackStart[1] * 100];
+    const facing = start?.facing ?? [0, -1];
     camera.position.set(point[0] / 100, baseHeightM + EYE_HEIGHT_M, point[1] / 100);
+    // Grundriss-y ist Szenen-z; die Kamera schaut ohne Drehung nach -z
+    yaw.current = Math.atan2(-facing[0], -facing[1]);
+    pitch.current = 0;
+    camera.rotation.set(0, yaw.current, 0, "YXZ");
 
     const down = (event: KeyboardEvent) => {
       keys.current[event.key.toLowerCase()] = true;
@@ -392,6 +447,16 @@ function WalkControls({
     // Riesenschritt, der die Wandprüfung unnötig auf die Probe stellt.
     const speed = WALK_SPEED_MS * Math.min(delta, 0.1);
 
+    if (touch) {
+      const [lookX, lookY] = input.current.look;
+      if (lookX !== 0 || lookY !== 0) {
+        yaw.current -= lookX * LOOK_SENSITIVITY;
+        pitch.current = Math.max(-1.2, Math.min(1.2, pitch.current - lookY * LOOK_SENSITIVITY));
+        camera.rotation.set(pitch.current, yaw.current, 0, "YXZ");
+        input.current.look = [0, 0];
+      }
+    }
+
     const forward = new THREE.Vector3();
     camera.getWorldDirection(forward);
     forward.y = 0;
@@ -404,6 +469,13 @@ function WalkControls({
     if (pressed["s"] || pressed["arrowdown"]) move.addScaledVector(forward, -speed);
     if (pressed["a"] || pressed["arrowleft"]) move.addScaledVector(right, -speed);
     if (pressed["d"] || pressed["arrowright"]) move.addScaledVector(right, speed);
+    if (touch) {
+      const [joyX, joyY] = input.current.move;
+      if (joyX !== 0 || joyY !== 0) {
+        move.addScaledVector(forward, joyY * speed);
+        move.addScaledVector(right, joyX * speed);
+      }
+    }
 
     camera.position.y = baseHeightM + EYE_HEIGHT_M;
     if (move.lengthSq() === 0) return;
@@ -416,5 +488,86 @@ function WalkControls({
     camera.position.z = resolved[1] / 100;
   });
 
-  return <PointerLockControls />;
+  // Am Rechner übernimmt der Pointer-Lock die Blickrichtung; am Handy die
+  // Wischfläche darüber.
+  return touch ? null : <PointerLockControls />;
+}
+
+/** Wischfläche über der Canvas (Umsehen) plus Joystick (Gehen). */
+function TouchWalkOverlay({ input }: { input: MutableRefObject<TouchInput> }) {
+  const last = useRef<{ id: number; x: number; y: number } | null>(null);
+  return (
+    <>
+      <div
+        className="absolute inset-0 touch-none"
+        data-testid="look-pad"
+        onPointerDown={(event) => {
+          last.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          if (!last.current || last.current.id !== event.pointerId) return;
+          const [x, y] = input.current.look;
+          input.current.look = [x + event.clientX - last.current.x, y + event.clientY - last.current.y];
+          last.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+        }}
+        onPointerUp={() => (last.current = null)}
+        onPointerCancel={() => (last.current = null)}
+      />
+      <Joystick input={input} />
+    </>
+  );
+}
+
+function Joystick({ input }: { input: MutableRefObject<TouchInput> }) {
+  const [knob, setKnob] = useState<[number, number]>([0, 0]);
+  const origin = useRef<{ id: number; x: number; y: number } | null>(null);
+
+  const update = (clientX: number, clientY: number) => {
+    if (!origin.current) return;
+    const dx = clientX - origin.current.x;
+    const dy = clientY - origin.current.y;
+    const length = Math.hypot(dx, dy);
+    const clamp = length > JOYSTICK_RADIUS ? JOYSTICK_RADIUS / length : 1;
+    const kx = dx * clamp;
+    const ky = dy * clamp;
+    setKnob([kx, ky]);
+    // Nach oben ziehen heißt vorwärts
+    input.current.move = [kx / JOYSTICK_RADIUS, -ky / JOYSTICK_RADIUS];
+  };
+  const release = () => {
+    origin.current = null;
+    setKnob([0, 0]);
+    input.current.move = [0, 0];
+  };
+
+  return (
+    <div
+      className="absolute bottom-5 left-5 h-28 w-28 touch-none select-none rounded-full border border-white/40 bg-black/25 backdrop-blur-sm"
+      role="slider"
+      aria-label="Joystick zum Gehen"
+      aria-valuenow={0}
+      data-testid="walk-joystick"
+      onPointerDown={(event) => {
+        // Der Knopf startet dort, wo der Finger aufsetzt — nicht in der Mitte
+        // des Rings; das fühlt sich auf dem Handy natürlicher an.
+        const rect = event.currentTarget.getBoundingClientRect();
+        origin.current = { id: event.pointerId, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        event.currentTarget.setPointerCapture(event.pointerId);
+        event.stopPropagation();
+        update(event.clientX, event.clientY);
+      }}
+      onPointerMove={(event) => {
+        if (origin.current?.id !== event.pointerId) return;
+        update(event.clientX, event.clientY);
+      }}
+      onPointerUp={release}
+      onPointerCancel={release}
+    >
+      <div
+        className="absolute top-1/2 left-1/2 h-12 w-12 rounded-full bg-white/90 shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
+        style={{ transform: `translate(calc(-50% + ${knob[0]}px), calc(-50% + ${knob[1]}px))` }}
+      />
+    </div>
+  );
 }

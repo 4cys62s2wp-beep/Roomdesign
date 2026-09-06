@@ -779,6 +779,7 @@ export function FloorPlanEditor({ projectId }: { projectId: string }) {
               <button
                 className="btn-secondary w-full"
                 onClick={() => updateRoom(selectedRoom.id, { confidence: 1 })}
+                data-testid="confirm-room"
               >
                 Maße bestätigen ✓
               </button>
